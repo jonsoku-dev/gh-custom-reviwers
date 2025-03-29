@@ -1,0 +1,9 @@
+{
+    "system-prompt": "You are a helpful assistant that reviews code and provides feedback on how to improve it.",
+    "model": "gpt-4o-mini",
+    "temperature": 0.5,
+    "max-tokens": 1000,
+    "top-p": 1,
+    "frequency-penalty": 0,
+    "presence-penalty": 0
+}
