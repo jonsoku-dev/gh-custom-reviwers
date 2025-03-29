@@ -23,7 +23,6 @@
     "sourceMap": false,
     "removeComments": true,
     "noEmitOnError": true,
-    "importHelpers": true,
     "pretty": false
   },
   "include": ["src/**/*"],
