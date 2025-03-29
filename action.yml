@@ -1,0 +1,198 @@
+# 액션 메타데이터
+name: "Code Review Action"
+description: "AI 코드 리뷰와 접근성 검사를 수행하는 GitHub 액션"
+author: "Jonsoku"
+
+# 버전 관리 주석 (수정하지 마세요!)
+# ESLint 액션 버전: 2fee6dd72a5419ff4113f694e2068d2a03bb35dd
+# Stylelint 액션 버전: dd2b435cc6a7c82705307a9dee740c9bbaa10411
+# Markdownlint 액션 버전: 3667398db9118d7e78f7a63d10e26ce454ba5f58
+# Misspell 액션 버전: 9daa94af4357dddb6fd3775de806bc0a8e98d3e4
+
+inputs:
+  # 디버그 설정
+  debug:
+    description: "디버그 모드 활성화 여부"
+    required: false
+    default: "false"
+
+  workdir:
+    description: "작업 디렉토리 경로"
+    required: false
+    default: "."
+
+  github_token:
+    description: "GitHub Token"
+    required: true
+    default: ${{ github.token }}
+
+  # AI 리뷰어 설정
+  ai_reviewer_enabled:
+    description: "AI 리뷰어 활성화 여부"
+    required: false
+    default: "true"
+    
+  ai_reviewer_api_key:
+    description: "OpenAI API 키"
+    required: false
+    default: ""
+  
+  ai_reviewer_language:
+    description: "AI 리뷰어 언어"
+    required: false
+    default: "ko"
+    
+  ai_reviewer_api_language:
+    description: "OpenAI API 언어"
+    required: false
+    default: "ko"
+
+  ai_reviewer_model:
+    description: "사용할 AI 모델"
+    required: false
+    default: "gpt-4o"
+    
+  ai_reviewer_max_tokens:
+    description: "최대 토큰 수"
+    required: false
+    default: "1000"
+    
+  ai_reviewer_temperature:
+    description: "AI 응답의 다양성 (0.0-1.0)"
+    required: false
+    default: "0.7"
+    
+  ai_reviewer_file_patterns:
+    description: "검사할 파일 패턴 (쉼표로 구분)"
+    required: false
+    default: "**/*.{js,jsx,ts,tsx}"
+    
+  ai_reviewer_exclude_patterns:
+    description: "제외할 파일 패턴 (쉼표로 구분)"
+    required: false
+    default: "**/node_modules/**,**/dist/**"
+
+  # Axe 리뷰어 설정
+  axe_reviewer_enabled:
+    description: "Axe 접근성 검사 활성화 여부"
+    required: false
+    default: "false"
+    
+  axe_reviewer_file_patterns:
+    description: "검사할 파일 패턴 (쉼표로 구분)"
+    required: false
+    default: "**/*.{html,jsx,tsx}"
+    
+  axe_reviewer_exclude_patterns:
+    description: "제외할 파일 패턴 (쉼표로 구분)"
+    required: false
+    default: "**/node_modules/**,**/dist/**"
+    
+  axe_reviewer_standard:
+    description: "접근성 표준"
+    required: false
+    default: "WCAG2AA"
+
+  # 결과 처리 설정
+  fail_on_error:
+    description: "에러 발생 시 액션 실패 여부"
+    required: false
+    default: "true"
+
+  comment_mode:
+    description: "코멘트 모드 [pr_comment, inline, both]"
+    required: false
+    default: "both"
+
+runs:
+  using: "composite"
+  steps:
+    # 1. 환경 설정
+    - name: Setup environment
+      shell: bash
+      run: |
+        # 디버그 모드 설정
+        if [ "${{ inputs.debug }}" = "true" ]; then
+          echo "DEBUG=true" >> $GITHUB_ENV
+          set -x
+        fi
+
+        # workdir이 기본값이 아닌 경우 파일 복사
+        if [ "${{ inputs.workdir }}" != "." ]; then
+          echo "사용자 지정 workdir에서 파일 복사 중..."
+          mkdir -p ${{ github.action_path }}/workspace
+          cp -r ${{ github.workspace }}/${{ inputs.workdir }}/* ${{ github.action_path }}/workspace/
+          echo "WORKSPACE_PATH=${{ github.action_path }}/workspace" >> $GITHUB_ENV
+        else
+          echo "WORKSPACE_PATH=${{ github.workspace }}" >> $GITHUB_ENV
+        fi
+
+        # 기본 설정
+        echo "GITHUB_TOKEN=${{ inputs.github_token }}" >> $GITHUB_ENV
+        echo "FAIL_ON_ERROR=${{ inputs.fail_on_error }}" >> $GITHUB_ENV
+        echo "COMMENT_MODE=${{ inputs.comment_mode }}" >> $GITHUB_ENV
+
+        # AI 리뷰어 설정
+        echo "AI_REVIEWER_ENABLED=${{ inputs.ai_reviewer_enabled }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_API_KEY=${{ inputs.ai_reviewer_api_key }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_LANGUAGE=${{ inputs.ai_reviewer_language }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_API_LANGUAGE=${{ inputs.ai_reviewer_api_language }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_MODEL=${{ inputs.ai_reviewer_model }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_MAX_TOKENS=${{ inputs.ai_reviewer_max_tokens }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_TEMPERATURE=${{ inputs.ai_reviewer_temperature }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_FILE_PATTERNS=${{ inputs.ai_reviewer_file_patterns }}" >> $GITHUB_ENV
+        echo "AI_REVIEWER_EXCLUDE_PATTERNS=${{ inputs.ai_reviewer_exclude_patterns }}" >> $GITHUB_ENV
+
+        # Axe 리뷰어 설정
+        echo "AXE_REVIEWER_ENABLED=${{ inputs.axe_reviewer_enabled }}" >> $GITHUB_ENV
+        echo "AXE_REVIEWER_FILE_PATTERNS=${{ inputs.axe_reviewer_file_patterns }}" >> $GITHUB_ENV
+        echo "AXE_REVIEWER_EXCLUDE_PATTERNS=${{ inputs.axe_reviewer_exclude_patterns }}" >> $GITHUB_ENV
+        echo "AXE_REVIEWER_STANDARD=${{ inputs.axe_reviewer_standard }}" >> $GITHUB_ENV
+
+        # 활성화된 리뷰어 자동 설정
+        ENABLED_REVIEWERS=""
+        
+        # AI 리뷰어 설정 확인
+        if [ "${{ inputs.ai_reviewer_enabled }}" = "true" ]; then
+          ENABLED_REVIEWERS="ai"
+        fi
+        
+        # Axe 리뷰어 설정 확인
+        if [ "${{ inputs.axe_reviewer_enabled }}" = "true" ]; then
+          if [ -n "$ENABLED_REVIEWERS" ]; then
+            ENABLED_REVIEWERS="$ENABLED_REVIEWERS,axe"
+          else
+            ENABLED_REVIEWERS="axe"
+          fi
+        fi
+        
+        echo "ENABLED_REVIEWERS=$ENABLED_REVIEWERS" >> $GITHUB_ENV
+
+    # 2. Node.js 설정
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    # 3. 작업 공간 설정 및 패키지 설치
+    - name: Setup workspace
+      shell: bash
+      run: |
+        cd $WORKSPACE_PATH
+        npm install
+
+    # 4. 리뷰어 실행
+    - name: Run reviewers
+      shell: bash
+      run: |
+        cd $WORKSPACE_PATH
+        cp -r ${{ github.action_path }}/src ./src
+        npx ts-node ./src/run-reviews.ts
+
+    # 5. 리뷰 결과 보고
+    # - name: Report results
+    #   shell: bash
+    #   run: |
+    #     cd $WORKSPACE_PATH
+    #     cp -r ${{ github.action_path }}/src ./src
+    #     npx ts-node ./src/report-results.ts
