@@ -1,10 +1,8 @@
 /// <reference types="node" />
 
-import { promises as fs } from 'fs';
+import { execSync } from 'child_process';
 import * as fsSync from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
-import type { ExecSyncOptionsWithStringEncoding } from 'child_process';
 
 // 타입 정의
 interface ActionInputs {
@@ -35,34 +33,6 @@ function getOptionalDependencies(inputs: ActionInputs): PackagesList {
   // 기본 패키지는 package.json에 이미 포함되어 있으므로 건너뜁니다.
   console.log('\n📦 선택적 패키지 확인 중...');
 
-  // ESLint 관련 패키지 스킵 여부 확인
-  if (inputs.skip_eslint === 'true') {
-    console.log('  ⏩ ESLint 패키지 스킵됨');
-  } else {
-    console.log('  ✓ ESLint 패키지 포함됨');
-  }
-
-  // Stylelint 관련 패키지 스킵 여부 확인
-  if (inputs.skip_stylelint === 'true') {
-    console.log('  ⏩ Stylelint 패키지 스킵됨');
-  } else {
-    console.log('  ✓ Stylelint 패키지 포함됨');
-  }
-
-  // Markdownlint 관련 패키지 스킵 여부 확인
-  if (inputs.skip_markdownlint === 'true') {
-    console.log('  ⏩ Markdownlint 패키지 스킵됨');
-  } else {
-    console.log('  ✓ Markdownlint 패키지 포함됨');
-  }
-
-  // AI 코드 리뷰 관련 패키지 스킵 여부 확인
-  if (inputs.skip_ai_review === 'true') {
-    console.log('  ⏩ AI 코드 리뷰 패키지 스킵됨');
-  } else {
-    console.log('  ✓ AI 코드 리뷰 패키지 포함됨');
-  }
-
   // 접근성 검사 관련 패키지 스킵 여부 확인
   if (inputs.skip_accessibility === 'true') {
     console.log('  ⏩ 접근성 검사 패키지 스킵됨');
@@ -75,41 +45,41 @@ function getOptionalDependencies(inputs: ActionInputs): PackagesList {
 
 function setupWorkspace(inputs: ActionInputs): void {
   console.log('\n=== 작업 공간 설정 시작 ===');
-  
+
   const workdir = process.env.INPUT_WORKDIR || '.';
-  
+
   try {
     console.log('\n⬇️ 패키지 설치 중...');
     process.chdir(workdir);
-    
+
     // npm cache를 정리
     console.log('npm cache 정리 중...');
     execSync('npm cache clean --force', { stdio: 'inherit' });
-    
+
     // package-lock.json이 있다면 삭제
     if (fsSync.existsSync('package-lock.json')) {
       console.log('기존 package-lock.json 삭제 중...');
       fsSync.unlinkSync('package-lock.json');
     }
-    
+
     // node_modules가 있다면 삭제
     if (fsSync.existsSync('node_modules')) {
       console.log('기존 node_modules 삭제 중...');
       fsSync.rmSync('node_modules', { recursive: true, force: true });
     }
-    
+
     // 전체 패키지 설치
     console.log('패키지 설치 중...');
     execSync('npm install --legacy-peer-deps', { stdio: 'inherit' });
-    
+
     console.log('✓ 패키지 설치 완료');
-    
+
     // 설치된 버전 확인
     console.log('\n📋 설치된 패키지 버전 확인:');
     execSync('npm list --depth=0', {
       stdio: 'inherit'
     });
-    
+
     // PATH에 node_modules/.bin 추가
     console.log('\n🔄 PATH 환경 변수 업데이트 중...');
     const binPath = path.join(process.cwd(), 'node_modules', '.bin');
@@ -117,7 +87,7 @@ function setupWorkspace(inputs: ActionInputs): void {
       fsSync.appendFileSync(process.env.GITHUB_PATH, `${binPath}\n`);
       console.log('✓ node_modules/.bin을 PATH에 추가함');
     }
-    
+
     console.log('\n=== 작업 공간 설정 완료 ===');
     console.log('📍 작업 디렉토리:', workdir);
   } catch (error) {
