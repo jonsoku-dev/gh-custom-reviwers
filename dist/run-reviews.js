@@ -28,23 +28,19 @@ const reviewer_manager_1 = require("./reviewers/reviewer-manager");
 const reviewers_1 = require("./reviewers");
 async function runReviews() {
     try {
-        // 디버그 모드 확인
         const isDebug = process.env.DEBUG === 'true';
         if (isDebug) {
             core.info('디버그 모드가 활성화되었습니다.');
         }
-        // 환경 변수에서 설정 가져오기
         const enabledReviewers = process.env.ENABLED_REVIEWERS?.split(',').filter(Boolean) || [];
         if (enabledReviewers.length === 0) {
             core.warning('활성화된 리뷰어가 없습니다.');
             return;
         }
-        // ReviewerManager 인스턴스 생성
         const manager = new reviewer_manager_1.ReviewerManager({
             workdir: process.env.WORKSPACE_PATH || '.',
             debug: isDebug
         });
-        // 활성화된 리뷰어 등록
         for (const reviewerType of enabledReviewers) {
             try {
                 if (isDebug) {
@@ -69,7 +65,6 @@ async function runReviews() {
                 }
             }
         }
-        // 리뷰 실행
         await manager.runReviews();
         core.info('모든 리뷰가 완료되었습니다.');
     }
@@ -83,8 +78,6 @@ async function runReviews() {
         }
     }
 }
-// 스크립트가 직접 실행될 때만 실행
 if (require.main === module) {
     runReviews();
 }
-//# sourceMappingURL=run-reviews.js.map

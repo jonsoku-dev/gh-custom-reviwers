@@ -1,5 +1,4 @@
 "use strict";
-/// <reference types="node" />
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -27,7 +26,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const child_process_1 = require("child_process");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
-// 버전 정보를 코드 내에서 직접 관리
 const versions = {
     core: {
         '@actions/core': '1.10.1',
@@ -60,27 +58,21 @@ const versions = {
 function createPackageJson(workdir) {
     console.log('\n=== package.json 생성 시작 ===');
     try {
-        // 필요한 의존성 수집
         const requiredDeps = {};
         const inputs = getInputs();
-        // 1. 코어 의존성 추가
         Object.entries(versions.core).forEach(([pkg, version]) => {
             requiredDeps[pkg] = version;
         });
-        // 2. 리뷰어별 의존성 추가
         if (inputs.skip_ai_review !== 'true' && versions.reviewers.ai) {
-            // AI 리뷰어 메인 패키지
             Object.entries(versions.reviewers.ai.dependencies).forEach(([pkg, version]) => {
                 requiredDeps[pkg] = version;
             });
         }
         if (inputs.skip_accessibility !== 'true' && versions.reviewers.axe) {
-            // Axe 접근성 검사 패키지
             Object.entries(versions.reviewers.axe.dependencies).forEach(([pkg, version]) => {
                 requiredDeps[pkg] = version;
             });
         }
-        // package.json 생성
         const packageJson = {
             name: 'code-review-action-workspace',
             version: '1.0.0',
@@ -90,34 +82,26 @@ function createPackageJson(workdir) {
             },
             dependencies: requiredDeps
         };
-        // package.json 파일 쓰기
         const targetPath = path.join(workdir, 'package.json');
         fs.writeFileSync(targetPath, JSON.stringify(packageJson, null, 2));
         console.log('✅ package.json 생성 완료:', targetPath);
-        // 설치될 패키지 목록 출력
         console.log('\n설치될 패키지 목록:');
         Object.entries(requiredDeps).forEach(([pkg, version]) => {
             console.log(`- ${pkg}@${version}`);
         });
-        // npm 패키지 설치
         console.log('\n⬇️ 패키지 설치 중...');
-        // npm cache를 정리
         console.log('npm cache 정리 중...');
         (0, child_process_1.execSync)('npm cache clean --force', { stdio: 'inherit' });
-        // package-lock.json이 있다면 삭제
         if (fs.existsSync('package-lock.json')) {
             console.log('기존 package-lock.json 삭제 중...');
             fs.unlinkSync('package-lock.json');
         }
-        // node_modules가 있다면 삭제
         if (fs.existsSync('node_modules')) {
             console.log('기존 node_modules 삭제 중...');
             fs.rmSync('node_modules', { recursive: true, force: true });
         }
-        // 패키지 설치
         (0, child_process_1.execSync)('npm install --legacy-peer-deps', { stdio: 'inherit' });
         console.log('✅ 패키지 설치 완료');
-        // PATH에 node_modules/.bin 추가
         const binPath = path.join(process.cwd(), 'node_modules', '.bin');
         if (process.env.GITHUB_PATH) {
             fs.appendFileSync(process.env.GITHUB_PATH, `${binPath}\n`);
@@ -136,7 +120,6 @@ function getInputs() {
         skip_accessibility: process.env.INPUT_SKIP_ACCESSIBILITY || 'false'
     };
 }
-// 메인 실행
 try {
     const inputs = getInputs();
     createPackageJson(inputs.workdir);
@@ -147,4 +130,3 @@ catch (error) {
     console.error('\n❌ 작업 공간 설정 실패');
     process.exit(1);
 }
-//# sourceMappingURL=setup-workspace.js.map

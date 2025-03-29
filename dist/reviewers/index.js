@@ -26,4 +26,3 @@ const createReviewer = (type, env) => {
     }
 };
 exports.createReviewer = createReviewer;
-//# sourceMappingURL=index.js.map

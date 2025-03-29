@@ -222,4 +222,3 @@ function generateAccessibilitySummary(results) {
     return summary;
 }
 runAccessibilityCheck();
-//# sourceMappingURL=check.js.map

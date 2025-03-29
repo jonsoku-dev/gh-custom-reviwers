@@ -81,9 +81,7 @@ class GithubReporter {
     }
     generateSummary(results) {
         let summary = '# 코드 리뷰 결과 요약\n\n';
-        // 전체 통계
         summary += `총 ${results.length}개의 문제가 발견되었습니다.\n\n`;
-        // 리뷰어별 요약
         const reviewerGroups = results.reduce((groups, result) => {
             const reviewer = result.reviewer;
             if (!groups[reviewer]) {
@@ -95,7 +93,6 @@ class GithubReporter {
         for (const [reviewer, reviewerResults] of Object.entries(reviewerGroups)) {
             summary += `## ${reviewer} 검사 결과\n`;
             summary += `- 발견된 문제: ${reviewerResults.length}개\n\n`;
-            // 파일별 그룹화
             const fileGroups = reviewerResults.reduce((groups, result) => {
                 if (!groups[result.file]) {
                     groups[result.file] = [];
@@ -119,7 +116,6 @@ class GithubReporter {
                 core.info('PR 컨텍스트가 없습니다. 결과 보고를 건너뜁니다.');
                 return;
             }
-            // 매니저에서 결과 가져오기
             const results = await this.manager.getResults();
             if (results.length === 0) {
                 core.info('리뷰 결과가 없습니다.');
@@ -132,7 +128,6 @@ class GithubReporter {
             if (options.commentMode === 'inline' || options.commentMode === 'both') {
                 await this.createInlineComments(results);
             }
-            // 에러 레벨 결과가 있는지 확인
             const hasErrors = results.some(result => result.severity === 'error');
             if (hasErrors && options.failOnError) {
                 core.setFailed('에러 수준의 문제가 발견되었습니다.');
@@ -187,8 +182,6 @@ async function reportResults() {
     }
 }
 exports.reportResults = reportResults;
-// 스크립트가 직접 실행될 때만 실행
 if (require.main === module) {
     reportResults();
 }
-//# sourceMappingURL=report-results.js.map
