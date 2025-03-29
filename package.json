@@ -1,5 +1,5 @@
 {
-  "name": "unified-lint-action",
+  "name": "custom-review-action",
   "version": "1.0.0",
   "private": true,
   "engines": {
@@ -7,9 +7,9 @@
   },
   "dependencies": {
     "@actions/core": "1.10.1",
-    "typescript": "5.4.2",
+    "typescript": "^5.0.0",
     "ts-node": "10.9.2",
-    "@types/node": "20.11.24",
+    "@types/node": "^20.0.0",
     "@types/jsdom": "21.1.6",
     "@types/glob": "8.1.0"
   },
@@ -34,6 +34,7 @@
   "scripts": {
     "build": "tsc",
     "lint": "eslint . --ext .ts",
-    "test": "jest"
+    "test": "jest",
+    "prepare": "npm run build"
   }
 }
