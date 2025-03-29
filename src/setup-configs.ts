@@ -4,13 +4,9 @@ import * as path from 'path';
 
 // 타입 정의
 interface ActionInputs {
-  skip_eslint: string;
-  skip_stylelint: string;
-  skip_markdownlint: string;
+  skip_ai_review: string;
   skip_accessibility: string;
-  eslint_config_path: string;
-  stylelint_config_path: string;
-  markdownlint_config_path: string;
+  ai_config_path: string;
   axe_config_path: string;
 }
 
@@ -86,25 +82,11 @@ function createConfig(inputs: ActionInputs): void {
   console.log('현재 작업 디렉토리:', process.cwd());
   
   try {
-    // ESLint 설정 (with Prettier)
-    if (inputs.skip_eslint !== 'true') {
-      copyConfigFiles('eslint', inputs.eslint_config_path);
+    // AI 리뷰어 설정
+    if (inputs.skip_ai_review !== 'true') {
+      copyConfigFiles('ai', inputs.ai_config_path);
     } else {
-      console.log('\n[eslint] 건너뛰기');
-    }
-
-    // Stylelint 설정
-    if (inputs.skip_stylelint !== 'true') {
-      copyConfigFiles('stylelint', inputs.stylelint_config_path);
-    } else {
-      console.log('\n[stylelint] 건너뛰기');
-    }
-
-    // Markdownlint 설정
-    if (inputs.skip_markdownlint !== 'true') {
-      copyConfigFiles('markdownlint', inputs.markdownlint_config_path);
-    } else {
-      console.log('\n[markdownlint] 건너뛰기');
+      console.log('\n[ai] 건너뛰기');
     }
 
     // Axe 설정
@@ -126,13 +108,9 @@ function createConfig(inputs: ActionInputs): void {
 // GitHub Actions 입력 값 가져오기 및 로깅
 console.log('\n=== 설정값 ===');
 const inputs: ActionInputs = {
-  skip_eslint: process.env.INPUT_SKIP_ESLINT || 'false',
-  skip_stylelint: process.env.INPUT_SKIP_STYLELINT || 'false',
-  skip_markdownlint: process.env.INPUT_SKIP_MARKDOWNLINT || 'false',
+  skip_ai_review: process.env.INPUT_SKIP_AI_REVIEW || 'false',
   skip_accessibility: process.env.INPUT_SKIP_ACCESSIBILITY || 'false',
-  eslint_config_path: process.env.INPUT_ESLINT_CONFIG_PATH || '',
-  stylelint_config_path: process.env.INPUT_STYLELINT_CONFIG_PATH || '',
-  markdownlint_config_path: process.env.INPUT_MARKDOWNLINT_CONFIG_PATH || '',
+  ai_config_path: process.env.INPUT_AI_CONFIG_PATH || '',
   axe_config_path: process.env.INPUT_AXE_CONFIG_PATH || ''
 };
 

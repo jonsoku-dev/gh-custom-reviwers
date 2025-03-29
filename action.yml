@@ -3,12 +3,6 @@ name: "Code Review Action"
 description: "AI 코드 리뷰와 접근성 검사를 수행하는 GitHub 액션"
 author: "Jonsoku"
 
-# 버전 관리 주석 (수정하지 마세요!)
-# ESLint 액션 버전: 2fee6dd72a5419ff4113f694e2068d2a03bb35dd
-# Stylelint 액션 버전: dd2b435cc6a7c82705307a9dee740c9bbaa10411
-# Markdownlint 액션 버전: 3667398db9118d7e78f7a63d10e26ce454ba5f58
-# Misspell 액션 버전: 9daa94af4357dddb6fd3775de806bc0a8e98d3e4
-
 inputs:
   # 디버그 설정
   debug:
