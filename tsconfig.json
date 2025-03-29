@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "commonjs",
     "lib": ["ES2022", "DOM"],
-    "declaration": true,
+    "declaration": false,
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
@@ -20,7 +20,11 @@
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
     "isolatedModules": true,
-    "sourceMap": true
+    "sourceMap": false,
+    "removeComments": true,
+    "noEmitOnError": true,
+    "importHelpers": true,
+    "pretty": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "__tests__"]
