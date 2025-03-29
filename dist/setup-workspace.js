@@ -30,25 +30,29 @@ const path = __importStar(require("path"));
 // 버전 정보를 코드 내에서 직접 관리
 const versions = {
     core: {
-        '@actions/core': '^1.10.1',
-        '@actions/exec': '^1.1.1',
-        '@actions/github': '^6.0.0'
+        '@actions/core': '1.10.1',
+        '@actions/github': '6.0.0',
+        'typescript': '^5.0.0',
+        'ts-node': '10.9.2',
+        '@types/node': '^20.0.0',
+        '@types/jsdom': '21.1.6',
+        '@types/glob': '8.1.0'
     },
     reviewers: {
         ai: {
-            version: '^4.0.0',
+            version: '1.0.0',
             dependencies: {
-                'openai': '^4.28.0',
-                '@octokit/rest': '^20.0.2',
-                'langchain': '^0.1.21'
+                'openai': '4.90.0',
+                '@actions/github': '6.0.0',
+                'jsdom': '26.0.0',
+                'glob': '11.0.1'
             }
         },
         axe: {
-            version: '^4.8.5',
+            version: '1.0.0',
             dependencies: {
-                'axe-core': '^4.8.5',
-                'puppeteer': '^22.3.0',
-                '@axe-core/puppeteer': '^4.8.5'
+                'axe-core': '4.10.3',
+                'jsdom': '26.0.0'
             }
         }
     }
