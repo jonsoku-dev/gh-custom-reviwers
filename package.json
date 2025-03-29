@@ -14,6 +14,7 @@
     "@types/glob": "8.1.0"
   },
   "devDependencies": {
+    "@vercel/ncc": "^0.38.1",
     "openai": "4.90.0",
     "@actions/github": "6.0.0",
     "jsdom": "26.0.0",
@@ -21,7 +22,8 @@
     "glob": "11.0.1"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run bundle",
+    "bundle": "find dist -type f -name '*.js' -not -path '*/bundled/*' | while read file; do mkdir -p dist/bundled/$(dirname \"${file#dist/}\") && ncc build \"$file\" -o \"dist/bundled/$(dirname \"${file#dist/}\")/$(basename \"$file\" .js)\" && cp -r \"dist/bundled/$(dirname \"${file#dist/}\")/$(basename \"$file\" .js)/index.js\" \"$file\" && rm -rf dist/bundled; done",
     "lint": "eslint . --ext .ts",
     "test": "jest",
     "prepare": "npm run build"
