@@ -27,7 +27,7 @@
   },
   "scripts": {
     "build": "tsc && npm run bundle",
-    "bundle": "ncc build src/run-reviews.ts -o dist --minify --no-cache --no-source-map-register --target es2022 && ncc build src/setup-configs.ts -o dist --minify --no-cache --no-source-map-register --target es2022",
+    "bundle": "find dist -type f -name '*.js' -not -path '*/bundled/*' | while read file; do mkdir -p dist/bundled/$(dirname \"${file#dist/}\") && ncc build \"$file\" -o \"dist/bundled/$(dirname \"${file#dist/}\")/$(basename \"$file\" .js)\" && cp -r \"dist/bundled/$(dirname \"${file#dist/}\")/$(basename \"$file\" .js)/index.js\" \"$file\" && rm -rf dist/bundled; done",
     "lint": "eslint . --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
