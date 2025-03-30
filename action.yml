@@ -142,13 +142,21 @@ runs:
         echo "AI_REVIEWER_MODEL=${{ inputs.ai_reviewer_model }}" >> $GITHUB_ENV
         echo "AI_REVIEWER_MAX_TOKENS=${{ inputs.ai_reviewer_max_tokens }}" >> $GITHUB_ENV
         echo "AI_REVIEWER_TEMPERATURE=${{ inputs.ai_reviewer_temperature }}" >> $GITHUB_ENV
-        echo "AI_REVIEWER_FILE_PATTERNS=${{ inputs.ai_reviewer_file_patterns }}" >> $GITHUB_ENV
-        echo "AI_REVIEWER_EXCLUDE_PATTERNS=${{ inputs.ai_reviewer_exclude_patterns }}" >> $GITHUB_ENV
+        echo 'AI_REVIEWER_FILE_PATTERNS<<EOF' >> $GITHUB_ENV
+        echo "${{ inputs.ai_reviewer_file_patterns }}" >> $GITHUB_ENV
+        echo 'EOF' >> $GITHUB_ENV
+        echo 'AI_REVIEWER_EXCLUDE_PATTERNS<<EOF' >> $GITHUB_ENV
+        echo "${{ inputs.ai_reviewer_exclude_patterns }}" >> $GITHUB_ENV
+        echo 'EOF' >> $GITHUB_ENV
 
         # Axe 리뷰어 설정
         echo "AXE_REVIEWER_ENABLED=${{ inputs.axe_reviewer_enabled }}" >> $GITHUB_ENV
-        echo "AXE_REVIEWER_FILE_PATTERNS=${{ inputs.axe_reviewer_file_patterns }}" >> $GITHUB_ENV
-        echo "AXE_REVIEWER_EXCLUDE_PATTERNS=${{ inputs.axe_reviewer_exclude_patterns }}" >> $GITHUB_ENV
+        echo 'AXE_REVIEWER_FILE_PATTERNS<<EOF' >> $GITHUB_ENV
+        echo "${{ inputs.axe_reviewer_file_patterns }}" >> $GITHUB_ENV
+        echo 'EOF' >> $GITHUB_ENV
+        echo 'AXE_REVIEWER_EXCLUDE_PATTERNS<<EOF' >> $GITHUB_ENV
+        echo "${{ inputs.axe_reviewer_exclude_patterns }}" >> $GITHUB_ENV
+        echo 'EOF' >> $GITHUB_ENV
         echo "AXE_REVIEWER_STANDARD=${{ inputs.axe_reviewer_standard }}" >> $GITHUB_ENV
 
         # 활성화된 리뷰어 자동 설정
