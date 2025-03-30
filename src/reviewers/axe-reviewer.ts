@@ -49,55 +49,69 @@ export default class AxeReviewer implements Reviewer {
     if (this._options.debug) {
       console.log(`검토할 작업 디렉토리: ${workdir}`);
       console.log(`검토할 파일 목록: ${JSON.stringify(files, null, 2)}`);
+      console.log('원본 옵션:', this._options);
     }
 
     // 파일 패턴 처리
     let filePatterns: string[];
     if (Array.isArray(this._options.filePatterns)) {
-      filePatterns = this._options.filePatterns;
+      // 배열인 경우 각 패턴을 개별적으로 처리
+      filePatterns = this._options.filePatterns.map(pattern => {
+        // 중괄호 패턴이 분리되었다면 다시 합치기
+        if (pattern.includes('.{') || pattern.includes('}.')) {
+          const base = pattern.split('.{')[0];
+          const exts = pattern.split('.{')[1]?.split('}')[0]?.split(',');
+          if (exts) {
+            return `${base}.{${exts.join(',')}}`;
+          }
+        }
+        return pattern;
+      });
     } else {
-      // 중괄호 패턴이 포함된 문자열을 그대로 유지
+      // 문자열인 경우 그대로 사용
       filePatterns = [this._options.filePatterns || "**/*.{html,jsx,tsx}"];
     }
 
     // 제외 패턴 처리
-    let excludePatterns: string[];
-    if (Array.isArray(this._options.excludePatterns)) {
-      excludePatterns = this._options.excludePatterns;
-    } else {
-      excludePatterns = (this._options.excludePatterns || "**/node_modules/**,**/dist/**,**/build/**")
-        .split(',')
-        .map(p => p.trim());
-    }
+    const excludePatterns = Array.isArray(this._options.excludePatterns)
+      ? this._options.excludePatterns
+      : (this._options.excludePatterns || "**/node_modules/**,**/dist/**,**/build/**")
+          .split(',')
+          .map(p => p.trim());
 
     if (this._options.debug) {
-      console.log('파일 패턴 처리:');
-      console.log(`원본 패턴: ${this._options.filePatterns}`);
-      console.log(`처리된 패턴: ${JSON.stringify(filePatterns)}`);
-      console.log(`제외 패턴: ${JSON.stringify(excludePatterns)}`);
+      console.log('=== 파일 패턴 처리 ===');
+      console.log(`입력된 파일 패턴:`, this._options.filePatterns);
+      console.log(`정규화된 파일 패턴:`, filePatterns);
+      console.log(`제외 패턴:`, excludePatterns);
     }
 
     const targetFiles = files.length > 0 ? files : filePatterns.reduce((acc: string[], pattern: string) => {
       if (this._options.debug) {
-        console.log(`glob 패턴 처리 중: ${pattern}`);
+        console.log(`\n[glob] 패턴 처리:`, pattern);
       }
+      
       const matches = glob.sync(pattern, {
         cwd: workdir,
         ignore: excludePatterns,
         absolute: false,
-        nodir: true
+        nodir: true,
+        dot: false
       });
+
       if (this._options.debug) {
-        console.log(`패턴 ${pattern}에 대한 매칭 파일:`, matches);
+        console.log(`[glob] 매칭된 파일:`, matches);
       }
-      return [...acc, ...matches];
+
+      return [...new Set([...acc, ...matches])];
     }, []);
 
     if (this._options.debug) {
+      console.log('\n=== 최종 결과 ===');
       console.log(`작업 디렉토리: ${workdir}`);
-      console.log(`최종 사용된 파일 패턴: ${JSON.stringify(filePatterns)}`);
-      console.log(`최종 사용된 제외 패턴: ${JSON.stringify(excludePatterns)}`);
-      console.log(`필터링된 대상 파일: ${JSON.stringify(targetFiles, null, 2)}`);
+      console.log(`최종 파일 패턴: ${JSON.stringify(filePatterns, null, 2)}`);
+      console.log(`최종 제외 패턴: ${JSON.stringify(excludePatterns, null, 2)}`);
+      console.log(`최종 대상 파일: ${JSON.stringify(targetFiles, null, 2)}`);
     }
 
     const axeConfig = await this.loadAxeConfig();
