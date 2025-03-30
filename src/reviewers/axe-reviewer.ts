@@ -52,52 +52,32 @@ export default class AxeReviewer implements Reviewer {
       console.log('원본 옵션:', this._options);
     }
 
-    // 파일 패턴 처리
-    const filePatterns = typeof this._options.filePatterns === 'string'
-      ? [this._options.filePatterns]
-      : Array.isArray(this._options.filePatterns)
-        ? this._options.filePatterns
-        : ["**/*.{html,jsx,tsx}"];
-
-    // 제외 패턴 처리
-    const excludePatterns = typeof this._options.excludePatterns === 'string'
-      ? (this._options.excludePatterns as string).split(',').map((p: string) => p.trim())
-      : Array.isArray(this._options.excludePatterns)
-        ? this._options.excludePatterns
+    // 파일 패턴과 제외 패턴 처리
+    const filePattern = this._options.filePatterns || "**/*.{html,jsx,tsx}";
+    const excludePatterns = Array.isArray(this._options.excludePatterns)
+      ? this._options.excludePatterns
+      : typeof this._options.excludePatterns === 'string'
+        ? (this._options.excludePatterns as string).split(',').map((p: string) => p.trim())
         : ["**/node_modules/**", "**/dist/**"];
 
     if (this._options.debug) {
       console.log('=== 파일 패턴 처리 ===');
-      console.log(`입력된 파일 패턴:`, filePatterns);
+      console.log(`파일 패턴:`, filePattern);
       console.log(`제외 패턴:`, excludePatterns);
     }
 
-    const targetFiles = files.length > 0 ? files : filePatterns.reduce((acc: string[], pattern: string) => {
-      if (this._options.debug) {
-        console.log(`\n[glob] 패턴 처리:`, pattern);
-      }
-      
-      const matches = glob.sync(pattern, {
-        cwd: workdir,
-        ignore: excludePatterns,
-        absolute: false,
-        nodir: true,
-        dot: false
-      });
-
-      if (this._options.debug) {
-        console.log(`[glob] 매칭된 파일:`, matches);
-      }
-
-      return [...new Set([...acc, ...matches])];
-    }, []);
+    const targetFiles = files.length > 0 ? files : glob.sync(filePattern, {
+      cwd: workdir,
+      ignore: excludePatterns,
+      absolute: false,
+      nodir: true,
+      dot: false
+    });
 
     if (this._options.debug) {
       console.log('\n=== 최종 결과 ===');
       console.log(`작업 디렉토리: ${workdir}`);
-      console.log(`최종 파일 패턴: ${JSON.stringify(filePatterns, null, 2)}`);
-      console.log(`최종 제외 패턴: ${JSON.stringify(excludePatterns, null, 2)}`);
-      console.log(`최종 대상 파일: ${JSON.stringify(targetFiles, null, 2)}`);
+      console.log(`대상 파일: ${JSON.stringify(targetFiles, null, 2)}`);
     }
 
     const axeConfig = await this.loadAxeConfig();
