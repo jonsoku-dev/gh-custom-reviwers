@@ -2873,6 +2873,216 @@ function range(a, b, str) {
 
 /***/ }),
 
+/***/ 4691:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+var balanced = __nccwpck_require__(9380);
+
+module.exports = expandTop;
+
+var escSlash = '\0SLASH'+Math.random()+'\0';
+var escOpen = '\0OPEN'+Math.random()+'\0';
+var escClose = '\0CLOSE'+Math.random()+'\0';
+var escComma = '\0COMMA'+Math.random()+'\0';
+var escPeriod = '\0PERIOD'+Math.random()+'\0';
+
+function numeric(str) {
+  return parseInt(str, 10) == str
+    ? parseInt(str, 10)
+    : str.charCodeAt(0);
+}
+
+function escapeBraces(str) {
+  return str.split('\\\\').join(escSlash)
+            .split('\\{').join(escOpen)
+            .split('\\}').join(escClose)
+            .split('\\,').join(escComma)
+            .split('\\.').join(escPeriod);
+}
+
+function unescapeBraces(str) {
+  return str.split(escSlash).join('\\')
+            .split(escOpen).join('{')
+            .split(escClose).join('}')
+            .split(escComma).join(',')
+            .split(escPeriod).join('.');
+}
+
+
+// Basically just str.split(","), but handling cases
+// where we have nested braced sections, which should be
+// treated as individual members, like {a,{b,c},d}
+function parseCommaParts(str) {
+  if (!str)
+    return [''];
+
+  var parts = [];
+  var m = balanced('{', '}', str);
+
+  if (!m)
+    return str.split(',');
+
+  var pre = m.pre;
+  var body = m.body;
+  var post = m.post;
+  var p = pre.split(',');
+
+  p[p.length-1] += '{' + body + '}';
+  var postParts = parseCommaParts(post);
+  if (post.length) {
+    p[p.length-1] += postParts.shift();
+    p.push.apply(p, postParts);
+  }
+
+  parts.push.apply(parts, p);
+
+  return parts;
+}
+
+function expandTop(str) {
+  if (!str)
+    return [];
+
+  // I don't know why Bash 4.3 does this, but it does.
+  // Anything starting with {} will have the first two bytes preserved
+  // but *only* at the top level, so {},a}b will not expand to anything,
+  // but a{},b}c will be expanded to [a}c,abc].
+  // One could argue that this is a bug in Bash, but since the goal of
+  // this module is to match Bash's rules, we escape a leading {}
+  if (str.substr(0, 2) === '{}') {
+    str = '\\{\\}' + str.substr(2);
+  }
+
+  return expand(escapeBraces(str), true).map(unescapeBraces);
+}
+
+function embrace(str) {
+  return '{' + str + '}';
+}
+function isPadded(el) {
+  return /^-?0\d/.test(el);
+}
+
+function lte(i, y) {
+  return i <= y;
+}
+function gte(i, y) {
+  return i >= y;
+}
+
+function expand(str, isTop) {
+  var expansions = [];
+
+  var m = balanced('{', '}', str);
+  if (!m) return [str];
+
+  // no need to expand pre, since it is guaranteed to be free of brace-sets
+  var pre = m.pre;
+  var post = m.post.length
+    ? expand(m.post, false)
+    : [''];
+
+  if (/\$$/.test(m.pre)) {    
+    for (var k = 0; k < post.length; k++) {
+      var expansion = pre+ '{' + m.body + '}' + post[k];
+      expansions.push(expansion);
+    }
+  } else {
+    var isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
+    var isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
+    var isSequence = isNumericSequence || isAlphaSequence;
+    var isOptions = m.body.indexOf(',') >= 0;
+    if (!isSequence && !isOptions) {
+      // {a},b}
+      if (m.post.match(/,.*\}/)) {
+        str = m.pre + '{' + m.body + escClose + m.post;
+        return expand(str);
+      }
+      return [str];
+    }
+
+    var n;
+    if (isSequence) {
+      n = m.body.split(/\.\./);
+    } else {
+      n = parseCommaParts(m.body);
+      if (n.length === 1) {
+        // x{{a,b}}y ==> x{a}y x{b}y
+        n = expand(n[0], false).map(embrace);
+        if (n.length === 1) {
+          return post.map(function(p) {
+            return m.pre + n[0] + p;
+          });
+        }
+      }
+    }
+
+    // at this point, n is the parts, and we know it's not a comma set
+    // with a single entry.
+    var N;
+
+    if (isSequence) {
+      var x = numeric(n[0]);
+      var y = numeric(n[1]);
+      var width = Math.max(n[0].length, n[1].length)
+      var incr = n.length == 3
+        ? Math.abs(numeric(n[2]))
+        : 1;
+      var test = lte;
+      var reverse = y < x;
+      if (reverse) {
+        incr *= -1;
+        test = gte;
+      }
+      var pad = n.some(isPadded);
+
+      N = [];
+
+      for (var i = x; test(i, y); i += incr) {
+        var c;
+        if (isAlphaSequence) {
+          c = String.fromCharCode(i);
+          if (c === '\\')
+            c = '';
+        } else {
+          c = String(i);
+          if (pad) {
+            var need = width - c.length;
+            if (need > 0) {
+              var z = new Array(need + 1).join('0');
+              if (i < 0)
+                c = '-' + z + c.slice(1);
+              else
+                c = z + c;
+            }
+          }
+        }
+        N.push(c);
+      }
+    } else {
+      N = [];
+
+      for (var j = 0; j < n.length; j++) {
+        N.push.apply(N, expand(n[j], false));
+      }
+    }
+
+    for (var j = 0; j < N.length; j++) {
+      for (var k = 0; k < post.length; k++) {
+        var expansion = pre + N[j] + post[k];
+        if (!isTop || isSequence || expansion)
+          expansions.push(expansion);
+      }
+    }
+  }
+
+  return expansions;
+}
+
+
+
+/***/ }),
+
 /***/ 6577:
 /***/ ((module, exports) => {
 
@@ -3752,216 +3962,6 @@ module.exports.defineEventAttribute = defineEventAttribute
 
 /***/ }),
 
-/***/ 8497:
-/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-var balanced = __nccwpck_require__(9380);
-
-module.exports = expandTop;
-
-var escSlash = '\0SLASH'+Math.random()+'\0';
-var escOpen = '\0OPEN'+Math.random()+'\0';
-var escClose = '\0CLOSE'+Math.random()+'\0';
-var escComma = '\0COMMA'+Math.random()+'\0';
-var escPeriod = '\0PERIOD'+Math.random()+'\0';
-
-function numeric(str) {
-  return parseInt(str, 10) == str
-    ? parseInt(str, 10)
-    : str.charCodeAt(0);
-}
-
-function escapeBraces(str) {
-  return str.split('\\\\').join(escSlash)
-            .split('\\{').join(escOpen)
-            .split('\\}').join(escClose)
-            .split('\\,').join(escComma)
-            .split('\\.').join(escPeriod);
-}
-
-function unescapeBraces(str) {
-  return str.split(escSlash).join('\\')
-            .split(escOpen).join('{')
-            .split(escClose).join('}')
-            .split(escComma).join(',')
-            .split(escPeriod).join('.');
-}
-
-
-// Basically just str.split(","), but handling cases
-// where we have nested braced sections, which should be
-// treated as individual members, like {a,{b,c},d}
-function parseCommaParts(str) {
-  if (!str)
-    return [''];
-
-  var parts = [];
-  var m = balanced('{', '}', str);
-
-  if (!m)
-    return str.split(',');
-
-  var pre = m.pre;
-  var body = m.body;
-  var post = m.post;
-  var p = pre.split(',');
-
-  p[p.length-1] += '{' + body + '}';
-  var postParts = parseCommaParts(post);
-  if (post.length) {
-    p[p.length-1] += postParts.shift();
-    p.push.apply(p, postParts);
-  }
-
-  parts.push.apply(parts, p);
-
-  return parts;
-}
-
-function expandTop(str) {
-  if (!str)
-    return [];
-
-  // I don't know why Bash 4.3 does this, but it does.
-  // Anything starting with {} will have the first two bytes preserved
-  // but *only* at the top level, so {},a}b will not expand to anything,
-  // but a{},b}c will be expanded to [a}c,abc].
-  // One could argue that this is a bug in Bash, but since the goal of
-  // this module is to match Bash's rules, we escape a leading {}
-  if (str.substr(0, 2) === '{}') {
-    str = '\\{\\}' + str.substr(2);
-  }
-
-  return expand(escapeBraces(str), true).map(unescapeBraces);
-}
-
-function embrace(str) {
-  return '{' + str + '}';
-}
-function isPadded(el) {
-  return /^-?0\d/.test(el);
-}
-
-function lte(i, y) {
-  return i <= y;
-}
-function gte(i, y) {
-  return i >= y;
-}
-
-function expand(str, isTop) {
-  var expansions = [];
-
-  var m = balanced('{', '}', str);
-  if (!m) return [str];
-
-  // no need to expand pre, since it is guaranteed to be free of brace-sets
-  var pre = m.pre;
-  var post = m.post.length
-    ? expand(m.post, false)
-    : [''];
-
-  if (/\$$/.test(m.pre)) {    
-    for (var k = 0; k < post.length; k++) {
-      var expansion = pre+ '{' + m.body + '}' + post[k];
-      expansions.push(expansion);
-    }
-  } else {
-    var isNumericSequence = /^-?\d+\.\.-?\d+(?:\.\.-?\d+)?$/.test(m.body);
-    var isAlphaSequence = /^[a-zA-Z]\.\.[a-zA-Z](?:\.\.-?\d+)?$/.test(m.body);
-    var isSequence = isNumericSequence || isAlphaSequence;
-    var isOptions = m.body.indexOf(',') >= 0;
-    if (!isSequence && !isOptions) {
-      // {a},b}
-      if (m.post.match(/,.*\}/)) {
-        str = m.pre + '{' + m.body + escClose + m.post;
-        return expand(str);
-      }
-      return [str];
-    }
-
-    var n;
-    if (isSequence) {
-      n = m.body.split(/\.\./);
-    } else {
-      n = parseCommaParts(m.body);
-      if (n.length === 1) {
-        // x{{a,b}}y ==> x{a}y x{b}y
-        n = expand(n[0], false).map(embrace);
-        if (n.length === 1) {
-          return post.map(function(p) {
-            return m.pre + n[0] + p;
-          });
-        }
-      }
-    }
-
-    // at this point, n is the parts, and we know it's not a comma set
-    // with a single entry.
-    var N;
-
-    if (isSequence) {
-      var x = numeric(n[0]);
-      var y = numeric(n[1]);
-      var width = Math.max(n[0].length, n[1].length)
-      var incr = n.length == 3
-        ? Math.abs(numeric(n[2]))
-        : 1;
-      var test = lte;
-      var reverse = y < x;
-      if (reverse) {
-        incr *= -1;
-        test = gte;
-      }
-      var pad = n.some(isPadded);
-
-      N = [];
-
-      for (var i = x; test(i, y); i += incr) {
-        var c;
-        if (isAlphaSequence) {
-          c = String.fromCharCode(i);
-          if (c === '\\')
-            c = '';
-        } else {
-          c = String(i);
-          if (pad) {
-            var need = width - c.length;
-            if (need > 0) {
-              var z = new Array(need + 1).join('0');
-              if (i < 0)
-                c = '-' + z + c.slice(1);
-              else
-                c = z + c;
-            }
-          }
-        }
-        N.push(c);
-      }
-    } else {
-      N = [];
-
-      for (var j = 0; j < n.length; j++) {
-        N.push.apply(N, expand(n[j], false));
-      }
-    }
-
-    for (var j = 0; j < N.length; j++) {
-      for (var k = 0; k < post.length; k++) {
-        var expansion = pre + N[j] + post[k];
-        if (!isTop || isSequence || expansion)
-          expansions.push(expansion);
-      }
-    }
-  }
-
-  return expansions;
-}
-
-
-
-/***/ }),
-
 /***/ 3724:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -4186,7 +4186,7 @@ module.exports = globalThis.DOMException
 
 /***/ }),
 
-/***/ 6705:
+/***/ 9227:
 /***/ ((module, exports, __nccwpck_require__) => {
 
 "use strict";
@@ -4199,7 +4199,7 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 var Stream = _interopDefault(__nccwpck_require__(2203));
 var http = _interopDefault(__nccwpck_require__(8611));
 var Url = _interopDefault(__nccwpck_require__(7016));
-var whatwgUrl = _interopDefault(__nccwpck_require__(5973));
+var whatwgUrl = _interopDefault(__nccwpck_require__(2944));
 var https = _interopDefault(__nccwpck_require__(5692));
 var zlib = _interopDefault(__nccwpck_require__(3106));
 
@@ -5981,14 +5981,14 @@ exports.AbortError = AbortError;
 
 /***/ }),
 
-/***/ 1733:
+/***/ 730:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
 var punycode = __nccwpck_require__(4876);
-var mappingTable = __nccwpck_require__(7963);
+var mappingTable = __nccwpck_require__(2594);
 
 var PROCESSING_OPTIONS = {
   TRANSITIONAL: 0,
@@ -6182,7 +6182,7 @@ module.exports.PROCESSING_OPTIONS = PROCESSING_OPTIONS;
 
 /***/ }),
 
-/***/ 1364:
+/***/ 1867:
 /***/ ((module) => {
 
 "use strict";
@@ -6379,12 +6379,12 @@ conversions["RegExp"] = function (V, opts) {
 
 /***/ }),
 
-/***/ 291:
+/***/ 7958:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
-const usm = __nccwpck_require__(7704);
+const usm = __nccwpck_require__(3655);
 
 exports.implementation = class URLImpl {
   constructor(constructorArgs) {
@@ -6587,15 +6587,15 @@ exports.implementation = class URLImpl {
 
 /***/ }),
 
-/***/ 1860:
+/***/ 1955:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-const conversions = __nccwpck_require__(1364);
-const utils = __nccwpck_require__(6880);
-const Impl = __nccwpck_require__(291);
+const conversions = __nccwpck_require__(1867);
+const utils = __nccwpck_require__(4659);
+const Impl = __nccwpck_require__(7958);
 
 const impl = utils.implSymbol;
 
@@ -6791,32 +6791,32 @@ module.exports = {
 
 /***/ }),
 
-/***/ 5973:
+/***/ 2944:
 /***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
 
 "use strict";
 
 
-exports.URL = __nccwpck_require__(1860)["interface"];
-exports.serializeURL = __nccwpck_require__(7704).serializeURL;
-exports.serializeURLOrigin = __nccwpck_require__(7704).serializeURLOrigin;
-exports.basicURLParse = __nccwpck_require__(7704).basicURLParse;
-exports.setTheUsername = __nccwpck_require__(7704).setTheUsername;
-exports.setThePassword = __nccwpck_require__(7704).setThePassword;
-exports.serializeHost = __nccwpck_require__(7704).serializeHost;
-exports.serializeInteger = __nccwpck_require__(7704).serializeInteger;
-exports.parseURL = __nccwpck_require__(7704).parseURL;
+exports.URL = __nccwpck_require__(1955)["interface"];
+exports.serializeURL = __nccwpck_require__(3655).serializeURL;
+exports.serializeURLOrigin = __nccwpck_require__(3655).serializeURLOrigin;
+exports.basicURLParse = __nccwpck_require__(3655).basicURLParse;
+exports.setTheUsername = __nccwpck_require__(3655).setTheUsername;
+exports.setThePassword = __nccwpck_require__(3655).setThePassword;
+exports.serializeHost = __nccwpck_require__(3655).serializeHost;
+exports.serializeInteger = __nccwpck_require__(3655).serializeInteger;
+exports.parseURL = __nccwpck_require__(3655).parseURL;
 
 
 /***/ }),
 
-/***/ 7704:
+/***/ 3655:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
 const punycode = __nccwpck_require__(4876);
-const tr46 = __nccwpck_require__(1733);
+const tr46 = __nccwpck_require__(730);
 
 const specialSchemes = {
   ftp: 21,
@@ -8115,7 +8115,7 @@ module.exports.parseURL = function (input, options) {
 
 /***/ }),
 
-/***/ 6880:
+/***/ 4659:
 /***/ ((module) => {
 
 "use strict";
@@ -36364,7 +36364,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.unescape = exports.escape = exports.AST = exports.Minimatch = exports.match = exports.makeRe = exports.braceExpand = exports.defaults = exports.filter = exports.GLOBSTAR = exports.sep = exports.minimatch = void 0;
-const brace_expansion_1 = __importDefault(__nccwpck_require__(8497));
+const brace_expansion_1 = __importDefault(__nccwpck_require__(4691));
 const assert_valid_pattern_js_1 = __nccwpck_require__(8895);
 const ast_js_1 = __nccwpck_require__(3238);
 const escape_js_1 = __nccwpck_require__(6726);
@@ -38555,7 +38555,7 @@ exports.getRuntime = void 0;
 /**
  * Disclaimer: modules in _shims aren't intended to be imported by SDK users.
  */
-const nf = __importStar(__nccwpck_require__(6705));
+const nf = __importStar(__nccwpck_require__(9227));
 const fd = __importStar(__nccwpck_require__(6635));
 const agentkeepalive_1 = __importDefault(__nccwpck_require__(3873));
 const abort_controller_1 = __nccwpck_require__(7413);
@@ -50141,7 +50141,7 @@ exports.LRUCache = LRUCache;
 
 /***/ }),
 
-/***/ 7963:
+/***/ 2594:
 /***/ ((module) => {
 
 "use strict";
