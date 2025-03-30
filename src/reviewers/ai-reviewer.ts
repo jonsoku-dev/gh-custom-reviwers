@@ -5,7 +5,7 @@ import * as fsSync from 'fs';
 import { Reviewer, ReviewResult, ReviewerOptions } from '../types/reviewer';
 import path from 'path';
 import { MockOpenAI } from '../mocks/openai';
-import glob from 'glob';
+import * as glob from 'glob';
 
 export default class AIReviewer implements Reviewer {
   private openai!: OpenAI | MockOpenAI;
