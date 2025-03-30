@@ -2,8 +2,15 @@ export interface ReviewResult {
   file: string;
   line: number;
   message: string;
-  severity: 'error' | 'warning' | 'info';
+  severity: 'info' | 'warning' | 'error';
   reviewer: string;
+}
+
+export interface AxeViolation {
+  help: string;
+  nodes: Array<{
+    html: string;
+  }>;
 }
 
 export interface ReviewerOptions {
@@ -19,7 +26,9 @@ export interface ReviewerOptions {
   temperature?: number;
   filePatterns?: string[];
   excludePatterns?: string[];
-  language?: string;
+  language?: 'ko' | 'en' | 'ja';
+  // Axe Reviewer specific
+  standard?: 'WCAG2A' | 'WCAG2AA' | 'WCAG2AAA';
 }
 
 export interface Reviewer {

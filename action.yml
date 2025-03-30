@@ -83,7 +83,7 @@ inputs:
     default: "**/node_modules/**,**/dist/**"
     
   axe_reviewer_standard:
-    description: "접근성 표준"
+    description: "접근성 표준 (WCAG2A, WCAG2AA, WCAG2AAA)"
     required: false
     default: "WCAG2AA"
 
