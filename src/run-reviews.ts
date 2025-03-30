@@ -2,13 +2,12 @@ import * as core from '@actions/core';
 import { ReviewerManager } from './reviewers/reviewer-manager';
 import { createReviewer } from './reviewers';
 
-export async function runReviews() {
+async function runReviews() {
   try {
     // 디버그 모드 확인
     const isDebug = process.env.DEBUG === 'true';
     if (isDebug) {
       core.info('디버그 모드가 활성화되었습니다.');
-      console.log('환경 변수:', process.env);
     }
 
     // 환경 변수에서 설정 가져오기
@@ -17,10 +16,6 @@ export async function runReviews() {
     if (enabledReviewers.length === 0) {
       core.warning('활성화된 리뷰어가 없습니다.');
       return;
-    }
-
-    if (isDebug) {
-      core.info(`활성화된 리뷰어: ${enabledReviewers.join(', ')}`);
     }
 
     // ReviewerManager 인스턴스 생성
@@ -34,6 +29,7 @@ export async function runReviews() {
       try {
         if (isDebug) {
           core.debug(`${reviewerType} 리뷰어 생성 시도...`);
+
         }
 
         if (!process.env) {
@@ -73,4 +69,4 @@ export async function runReviews() {
 // 스크립트가 직접 실행될 때만 실행
 if (require.main === module) {
   runReviews();
-}
+} 
