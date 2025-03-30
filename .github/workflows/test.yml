@@ -5,117 +5,167 @@ on:
       - main
   pull_request:
 
+env:
+  SLACK_CHANNEL: "#reviewdog-slack-test"
+  SLACK_USERNAME: "Lint Test Bot"
+  SLACK_ICON_EMOJI: ":test:"
+
 jobs:
-  test-basic:
-    name: 기본 리뷰어 테스트
+  test-check:
+    name: Lint Check (github-check)
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: ./
         with:
           github_token: ${{ secrets.github_token }}
+          reporter: github-check
+          filter_mode: nofilter
+          level: warning
+          fail_level: warning
           workdir: ./testdata/
-          debug: true
+
+          # AI 리뷰어 설정
           ai_reviewer_use_mock_api: true
           ai_reviewer_enabled: true
           ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
-          ai_reviewer_language: ja
+          ai_reviewer_language: ko
           ai_reviewer_model: gpt-4o
-          ai_reviewer_max_tokens: 1000
-          ai_reviewer_temperature: 0.7
           ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"
-          ai_reviewer_exclude_patterns: "**/node_modules/**,**/dist/**"
+
+          # Axe 리뷰어 설정
           axe_reviewer_enabled: true
           axe_reviewer_file_patterns: "**/*.{html,jsx,tsx}"
-          axe_reviewer_exclude_patterns: "**/node_modules/**,**/dist/**"
-          axe_reviewer_standard: "WCAG2AA"
-          fail_on_error: true
-          comment_mode: both
 
-  test-axe-only:
-    name: Axe 리뷰어 전용 테스트
+          # HTML 검증기 설정
+          html_reviewer_enabled: true
+          html_reviewer_file_patterns: "**/*.{html,htm}"
+          html_reviewer_use_mock_api: true
+
+          # CSS 검증기 설정
+          css_reviewer_enabled: true
+          css_reviewer_file_patterns: "**/*.{css,scss,less}"
+          css_reviewer_use_mock_api: true
+
+          # 인라인 코드 검출기 설정
+          inline_code_reviewer_enabled: true
+          inline_code_reviewer_file_patterns: "**/*.{html,htm}"
+
+          # 이미지 최적화 검사기 설정
+          image_reviewer_enabled: true
+          image_reviewer_file_patterns: "**/*.{html,htm,jpg,jpeg,png,gif,webp,svg}"
+
+          # 페이지 구조 분석기 설정
+          page_structure_reviewer_enabled: true
+          page_structure_reviewer_file_patterns: "**/*.{html,htm}"
+
+          debug: true
+
+  test-pr-check:
+    if: github.event_name == 'pull_request'
+    name: Lint Check (github-pr-check)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ./
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-pr-check
+          filter_mode: nofilter
+          level: warning
+          fail_level: warning
+          workdir: ./testdata/
+
+          # AI 리뷰어 설정
+          ai_reviewer_use_mock_api: true
+          ai_reviewer_enabled: true
+          ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
+          ai_reviewer_language: ko
+          ai_reviewer_model: gpt-4o
+          ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"
+
+          # Axe 리뷰어 설정
+          axe_reviewer_enabled: true
+          axe_reviewer_file_patterns: "**/*.{html,jsx,tsx}"
+
+          # HTML 검증기 설정
+          html_reviewer_enabled: true
+          html_reviewer_file_patterns: "**/*.{html,htm}"
+          html_reviewer_use_mock_api: true
+
+          # CSS 검증기 설정
+          css_reviewer_enabled: true
+          css_reviewer_file_patterns: "**/*.{css,scss,less}"
+          css_reviewer_use_mock_api: true
+
+          # 인라인 코드 검출기 설정
+          inline_code_reviewer_enabled: true
+          inline_code_reviewer_file_patterns: "**/*.{html,htm}"
+
+          # 이미지 최적화 검사기 설정
+          image_reviewer_enabled: true
+          image_reviewer_file_patterns: "**/*.{html,htm,jpg,jpeg,png,gif,webp,svg}"
+
+          # 페이지 구조 분석기 설정
+          page_structure_reviewer_enabled: true
+          page_structure_reviewer_file_patterns: "**/*.{html,htm}"
+
+          debug: true
+
+  test-pr-review:
+    if: github.event_name == 'pull_request'
+    name: Lint Check (github-pr-review)
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: ./
         with:
           github_token: ${{ secrets.github_token }}
+          reporter: github-pr-review
+          filter_mode: nofilter
+          level: error
+          fail_level: error
           workdir: ./testdata/
-          debug: true
+
+          # AI 리뷰어 설정
           ai_reviewer_use_mock_api: true
-          ai_reviewer_enabled: false
+          ai_reviewer_enabled: true
+          ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
+          ai_reviewer_language: ko
+          ai_reviewer_model: gpt-4o
+          ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"
+
+          # Axe 리뷰어 설정
           axe_reviewer_enabled: true
           axe_reviewer_file_patterns: "**/*.{html,jsx,tsx}"
-          axe_reviewer_exclude_patterns: "**/node_modules/**,**/dist/**"
-          axe_reviewer_standard: "WCAG2AA"
-          fail_on_error: true
-          comment_mode: both
 
-  # test-pr-review:
-  #   if: github.event_name == 'pull_request'
-  #   name: PR 리뷰 테스트
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-  #     pull-requests: write
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #     - uses: ./
-  #       with:
-  #         github_token: ${{ secrets.github_token }}
-  #         workdir: ./testdata/
-  #         debug: true
-  #         ai_reviewer_enabled: true
-  #         ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
-  #         ai_reviewer_model: gpt-4o
-  #         ai_reviewer_max_tokens: 1000
-  #         ai_reviewer_temperature: 0.7
-  #         ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"
-  #         ai_reviewer_exclude_patterns: "**/node_modules/**,**/dist/**"
-  #         fail_on_error: false
-  #         comment_mode: pr_comment
+          # HTML 검증기 설정
+          html_reviewer_enabled: true
+          html_reviewer_file_patterns: "**/*.{html,htm}"
+          html_reviewer_use_mock_api: true
 
-  # test-no-config:
-  #   name: 설정 없는 테스트 (기본값 사용)
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-  #     pull-requests: write
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: '20'
-  #     - uses: ./
-  #       with:
-  #         github_token: ${{ secrets.github_token }}
-  #         workdir: ./testdata/no-config/
-  #         debug: true
-  #         ai_reviewer_enabled: true
-  #         ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
-  #         ai_reviewer_model: gpt-4o
-  #         ai_reviewer_max_tokens: 1000
-  #         ai_reviewer_temperature: 0.7
-  #         ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"
-  #         ai_reviewer_exclude_patterns: "**/node_modules/**,**/dist/**"
-  #         fail_on_error: true
-  #         comment_mode: both
+          # CSS 검증기 설정
+          css_reviewer_enabled: true
+          css_reviewer_file_patterns: "**/*.{css,scss,less}"
+          css_reviewer_use_mock_api: true
+
+          # 인라인 코드 검출기 설정
+          inline_code_reviewer_enabled: true
+          inline_code_reviewer_file_patterns: "**/*.{html,htm}"
+
+          # 이미지 최적화 검사기 설정
+          image_reviewer_enabled: true
+          image_reviewer_file_patterns: "**/*.{html,htm,jpg,jpeg,png,gif,webp,svg}"
+
+          # 페이지 구조 분석기 설정
+          page_structure_reviewer_enabled: true
+          page_structure_reviewer_file_patterns: "**/*.{html,htm}"
+
+          debug: true
