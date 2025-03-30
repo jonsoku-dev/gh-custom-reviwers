@@ -400,7 +400,7 @@ runs:
         else
           cp -r ${{ github.action_path }}/configs/* ./
         fi
-        node ${{ github.action_path }}/dist/setup-configs.js
+        node ${{ github.action_path }}/dist/setup-configs/index.js
 
     # 4. 리뷰 실행
     - name: Run reviews
@@ -410,4 +410,4 @@ runs:
         if [ "${{ inputs.workdir }}" != "." ]; then
           cd ${{ inputs.workdir }}
         fi
-        node ${{ github.action_path }}/dist/run-reviews.js
+        node ${{ github.action_path }}/dist/run-reviews/index.js
