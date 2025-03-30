@@ -23,7 +23,7 @@ jobs:
           github_token: ${{ secrets.github_token }}
           workdir: ./testdata/
           debug: true
-          ai_reviewer_use_mock_api: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
+          ai_reviewer_use_mock_api: true
           ai_reviewer_enabled: true
           ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
           ai_reviewer_language: ja
