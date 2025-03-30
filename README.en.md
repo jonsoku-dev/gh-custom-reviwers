@@ -16,6 +16,8 @@ This action runs multiple linting tools and reports results through reviewdog:
 - Markdownlint
 - Misspell
 
+👉 [View Detailed Architecture Document](./아키텍처.md)
+
 ## Usage
 
 ```yaml

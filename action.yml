@@ -168,27 +168,7 @@ runs:
       with:
         node-version: '20'
 
-    # 3. 작업 공간 설정
-    - name: Setup workspace
-      shell: bash
-      run: |
-        cd $WORKSPACE_PATH
-        if [ "${{ inputs.workdir }}" != "." ]; then
-          mkdir -p ${{ inputs.workdir }}
-        fi
-        
-        # package.json 생성을 위해 컴파일된 JS 실행
-        echo "작업 공간 설정 시작..."
-        if [ "${{ inputs.workdir }}" != "." ]; then
-          cd ${{ inputs.workdir }}
-        fi
-        node ${{ github.action_path }}/dist/setup-workspace.js
-        
-        # 생성된 package.json의 의존성 설치
-        echo "프로젝트 의존성 설치 중..."
-        npm install
-
-    # 4. 설정 파일 생성
+    # 3. 설정 파일 생성
     - name: Setup configurations
       shell: bash
       run: |
@@ -202,7 +182,7 @@ runs:
         fi
         node ${{ github.action_path }}/dist/setup-configs.js
 
-    # 5. 리뷰 실행
+    # 4. 리뷰 실행
     - name: Run reviews
       shell: bash
       run: |
