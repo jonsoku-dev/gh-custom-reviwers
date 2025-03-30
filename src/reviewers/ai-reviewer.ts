@@ -4,9 +4,10 @@ import { promises as fs } from 'fs';
 import * as fsSync from 'fs';
 import { Reviewer, ReviewResult, ReviewerOptions } from '../types/reviewer';
 import path from 'path';
+import { MockOpenAI } from '../mocks/openai';
 
 export default class AIReviewer implements Reviewer {
-  private openai!: OpenAI;
+  private openai!: OpenAI | MockOpenAI;
   private _options: ReviewerOptions;
   private readonly name = 'AIReviewer';
 
@@ -26,18 +27,27 @@ export default class AIReviewer implements Reviewer {
     if (this._options.debug) {
       console.log('AI 리뷰어 OpenAI 초기화 시작');
     }
-    
-    if (!this._options.apiKey) {
-      const error = new Error('OpenAI API 키가 설정되지 않았습니다.');
-      core.error(error.message);
-      throw error;
-    }
 
     try {
-      this.openai = new OpenAI({ apiKey: this._options.apiKey });
+      if (process.env.USE_MOCK_API === 'true') {
+        this.openai = new MockOpenAI();
+        if (this._options.debug) {
+          console.log('Mock OpenAI 클라이언트가 초기화되었습니다.');
+        }
+      } else {
+        if (!this._options.apiKey) {
+          const error = new Error('OpenAI API 키가 설정되지 않았습니다.');
+          core.error(error.message);
+          throw error;
+        }
+
+        this.openai = new OpenAI({ apiKey: this._options.apiKey });
+        if (this._options.debug) {
+          console.log('실제 OpenAI 클라이언트가 초기화되었습니다.');
+        }
+      }
       
       if (this._options.debug) {
-        console.log('OpenAI 클라이언트가 성공적으로 초기화되었습니다.');
         console.log('AI 리뷰어 초기화됨');
         const debugConfig = { ...this._options, apiKey: '***' };
         console.log(`설정: ${JSON.stringify(debugConfig, null, 2)}`);

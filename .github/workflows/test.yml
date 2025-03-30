@@ -18,6 +18,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Set environment variables
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "USE_MOCK_API=false" >> $GITHUB_ENV
+          else
+            echo "USE_MOCK_API=true" >> $GITHUB_ENV
+          fi
       - uses: ./
         with:
           github_token: ${{ secrets.github_token }}
@@ -50,6 +57,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Set environment variables
+        run: |
+          echo "USE_MOCK_API=true" >> $GITHUB_ENV
       - uses: ./
         with:
           github_token: ${{ secrets.github_token }}
