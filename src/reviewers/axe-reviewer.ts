@@ -51,14 +51,24 @@ export default class AxeReviewer implements Reviewer {
       console.log(`검토할 파일 목록: ${JSON.stringify(files, null, 2)}`);
     }
 
-    // 파일 패턴이 문자열로 들어오는 경우 처리
-    const filePatterns = Array.isArray(this._options.filePatterns) 
-      ? this._options.filePatterns 
-      : (this._options.filePatterns || "**/*.{html,jsx,tsx}").split(',').map(p => p.trim());
+    // 파일 패턴 처리
+    let filePatterns: string[];
+    if (Array.isArray(this._options.filePatterns)) {
+      filePatterns = this._options.filePatterns;
+    } else {
+      // 중괄호 패턴이 포함된 문자열을 그대로 유지
+      filePatterns = [this._options.filePatterns || "**/*.{html,jsx,tsx}"];
+    }
 
-    const excludePatterns = Array.isArray(this._options.excludePatterns)
-      ? this._options.excludePatterns
-      : (this._options.excludePatterns || "**/node_modules/**,**/dist/**,**/build/**").split(',').map(p => p.trim());
+    // 제외 패턴 처리
+    let excludePatterns: string[];
+    if (Array.isArray(this._options.excludePatterns)) {
+      excludePatterns = this._options.excludePatterns;
+    } else {
+      excludePatterns = (this._options.excludePatterns || "**/node_modules/**,**/dist/**,**/build/**")
+        .split(',')
+        .map(p => p.trim());
+    }
 
     if (this._options.debug) {
       console.log('파일 패턴 처리:');
@@ -68,19 +78,25 @@ export default class AxeReviewer implements Reviewer {
     }
 
     const targetFiles = files.length > 0 ? files : filePatterns.reduce((acc: string[], pattern: string) => {
+      if (this._options.debug) {
+        console.log(`glob 패턴 처리 중: ${pattern}`);
+      }
       const matches = glob.sync(pattern, {
         cwd: workdir,
         ignore: excludePatterns,
         absolute: false,
         nodir: true
       });
+      if (this._options.debug) {
+        console.log(`패턴 ${pattern}에 대한 매칭 파일:`, matches);
+      }
       return [...acc, ...matches];
     }, []);
 
     if (this._options.debug) {
       console.log(`작업 디렉토리: ${workdir}`);
-      console.log(`사용된 파일 패턴: ${JSON.stringify(filePatterns)}`);
-      console.log(`사용된 제외 패턴: ${JSON.stringify(excludePatterns)}`);
+      console.log(`최종 사용된 파일 패턴: ${JSON.stringify(filePatterns)}`);
+      console.log(`최종 사용된 제외 패턴: ${JSON.stringify(excludePatterns)}`);
       console.log(`필터링된 대상 파일: ${JSON.stringify(targetFiles, null, 2)}`);
     }
 
