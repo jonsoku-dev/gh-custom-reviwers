@@ -72,7 +72,7 @@ const core = __importStar(__nccwpck_require__(7484));
 const fs_1 = __nccwpck_require__(9896);
 const path_1 = __importDefault(__nccwpck_require__(6928));
 const openai_2 = __nccwpck_require__(3779);
-const glob_1 = __importDefault(__nccwpck_require__(1363));
+const glob = __importStar(__nccwpck_require__(1363));
 class AIReviewer {
     openai;
     _options;
@@ -173,11 +173,11 @@ class AIReviewer {
         }
         const targetFiles = files.filter(file => {
             const relativePath = path_1.default.relative(workdir, path_1.default.join(workdir, file));
-            const isMatched = glob_1.default.sync(filePattern, {
+            const isMatched = glob.sync(filePattern, {
                 cwd: workdir,
                 dot: false
             }).some(match => match === relativePath);
-            const isExcluded = excludePatterns.some(excludePattern => glob_1.default.sync(excludePattern, {
+            const isExcluded = excludePatterns.some(excludePattern => glob.sync(excludePattern, {
                 cwd: workdir,
                 dot: false
             }).some(match => match === relativePath));
