@@ -67,23 +67,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-const openai_1 = __importDefault(__nccwpck_require__(2583));
 const core = __importStar(__nccwpck_require__(7484));
 const fs_1 = __nccwpck_require__(9896);
-const path_1 = __importDefault(__nccwpck_require__(6928));
+const openai_1 = __importDefault(__nccwpck_require__(2583));
 const openai_2 = __nccwpck_require__(3779);
-const glob = __importStar(__nccwpck_require__(1363));
-class AIReviewer {
+const base_reviewer_1 = __nccwpck_require__(9405);
+class AIReviewer extends base_reviewer_1.BaseReviewer {
     openai;
-    _options;
     name = 'AIReviewer';
     constructor(options = {}) {
-        this._options = options;
-        if (this._options.debug) {
-            console.log('AI 리뷰어 생성자 호출됨');
-            console.log('AI 리뷰어 초기 옵션:');
-            console.log(JSON.stringify({ ...this._options, apiKey: this._options.apiKey ? '***' : undefined }, null, 2));
-        }
+        super(options);
         this.initializeOpenAI();
     }
     initializeOpenAI() {
@@ -127,20 +120,6 @@ class AIReviewer {
             throw error;
         }
     }
-    get options() {
-        return this._options;
-    }
-    set options(newOptions) {
-        this._options = newOptions;
-        if (this._options.debug) {
-            console.log('AI 리뷰어 옵션 업데이트 시작');
-            console.log('AI 리뷰어 옵션이 업데이트되었습니다.');
-            const debugConfig = { ...this._options, apiKey: '***' };
-            console.log(`새 설정: ${JSON.stringify(debugConfig, null, 2)}`);
-            console.log('AI 리뷰어 옵션 업데이트 완료');
-        }
-        this.initializeOpenAI();
-    }
     async isEnabled() {
         const enabled = this._options.enabled !== false && !!this._options.apiKey;
         if (this._options.debug) {
@@ -148,86 +127,25 @@ class AIReviewer {
         }
         return enabled;
     }
-    async review(files) {
-        const results = [];
-        const workdir = this._options.workdir || '.';
+    async reviewFile(filePath) {
+        const content = await fs_1.promises.readFile(filePath, 'utf8');
+        const suggestions = await this.analyzeCode(content);
         if (this._options.debug) {
-            console.log(`검토할 작업 디렉토리: ${workdir}`);
-            console.log(`입력된 전체 파일 목록: ${JSON.stringify(files, null, 2)}`);
-            console.log('리뷰어 옵션:', {
-                ...this._options,
-                apiKey: '***',
-                enabled: this._options.enabled,
-                filePatterns: this._options.filePatterns,
-                excludePatterns: this._options.excludePatterns,
-                useMockApi: this._options.useMockApi
+            console.log(`파일 ${filePath}에 대한 제안사항:`);
+            suggestions.forEach((suggestion, index) => {
+                console.log(`  ${index + 1}. ${suggestion}`);
             });
         }
-        const filePattern = this._options.filePatterns?.[0] || "**/*.{js,jsx,ts,tsx}";
-        const excludePattern = this._options.excludePatterns?.[0] || "**/node_modules/**,**/dist/**";
-        const excludePatterns = excludePattern.split(',').map(p => p.trim());
-        if (this._options.debug) {
-            console.log('\n=== 파일 패턴 설정 ===');
-            console.log(`파일 패턴:`, filePattern);
-            console.log(`제외 패턴:`, excludePatterns);
-        }
-        const targetFiles = files.filter(file => {
-            const relativePath = path_1.default.relative(workdir, path_1.default.join(workdir, file));
-            const isMatched = glob.sync(filePattern, {
-                cwd: workdir,
-                dot: false
-            }).some(match => match === relativePath);
-            const isExcluded = excludePatterns.some(excludePattern => glob.sync(excludePattern, {
-                cwd: workdir,
-                dot: false
-            }).some(match => match === relativePath));
-            if (this._options.debug) {
-                console.log(`\n파일 검사: ${file}`);
-                console.log(`- 패턴 매칭: ${isMatched}`);
-                console.log(`- 제외 여부: ${isExcluded}`);
-            }
-            return isMatched && !isExcluded;
-        });
-        if (this._options.debug) {
-            console.log('\n=== 최종 검사 대상 ===');
-            console.log(`검사 대상 파일 수: ${targetFiles.length}`);
-            console.log(`검사 대상 파일 목록:`, JSON.stringify(targetFiles, null, 2));
-        }
-        for (const file of targetFiles) {
-            try {
-                const filePath = path_1.default.join(workdir, file);
-                if (this._options.debug) {
-                    console.log(`파일 분석 시작: ${filePath}`);
-                }
-                const content = await fs_1.promises.readFile(filePath, 'utf8');
-                const suggestions = await this.analyzeCode(content);
-                if (this._options.debug) {
-                    console.log(`파일 ${filePath}에 대한 제안사항:`);
-                    suggestions.forEach((suggestion, index) => {
-                        console.log(`  ${index + 1}. ${suggestion}`);
-                    });
-                }
-                suggestions.forEach((suggestion, index) => {
-                    results.push({
-                        file: filePath,
-                        line: 1,
-                        message: suggestion,
-                        severity: 'info',
-                        reviewer: this.name
-                    });
-                });
-            }
-            catch (error) {
-                core.warning(`파일 분석 중 오류 발생 (${file}): ${error}`);
-                if (this._options.debug && error instanceof Error) {
-                    console.log(`스택 트레이스: ${error.stack}`);
-                }
-            }
-        }
-        if (this._options.debug) {
-            console.log(`총 ${results.length}개의 리뷰 결과가 생성되었습니다.`);
-        }
-        return results;
+        return suggestions.map(suggestion => ({
+            file: filePath,
+            line: 1,
+            message: suggestion,
+            severity: 'info',
+            reviewer: this.name
+        }));
+    }
+    getDefaultFilePattern() {
+        return "**/*.{js,jsx,ts,tsx}";
     }
     async analyzeCode(code) {
         try {
@@ -282,6 +200,122 @@ class AIReviewer {
     }
 }
 exports["default"] = AIReviewer;
+
+
+/***/ }),
+
+/***/ 9405:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.BaseReviewer = void 0;
+const core = __importStar(__nccwpck_require__(7484));
+const path = __importStar(__nccwpck_require__(6928));
+const glob = __importStar(__nccwpck_require__(1363));
+class BaseReviewer {
+    _options;
+    constructor(options = {}) {
+        this._options = options;
+        this.logDebug('리뷰어 생성자 호출됨');
+        this.logDebug('리뷰어 초기 옵션:', this._options);
+    }
+    logDebug(message, ...args) {
+        if (this._options.debug) {
+            if (args.length > 0) {
+                console.log(`[${this.name}] ${message}`, ...args);
+            }
+            else {
+                console.log(`[${this.name}] ${message}`);
+            }
+        }
+    }
+    get options() {
+        return this._options;
+    }
+    set options(newOptions) {
+        this._options = newOptions;
+        this.logDebug('리뷰어 옵션 업데이트됨');
+        this.logDebug('새 설정:', this._options);
+    }
+    async review(files) {
+        const results = [];
+        const workdir = this._options.workdir || '.';
+        this.logDebug(`검토할 작업 디렉토리: ${workdir}`);
+        this.logDebug('입력된 전체 파일 목록:', files);
+        this.logDebug('리뷰어 옵션:', {
+            ...this._options,
+            enabled: this._options.enabled,
+            filePatterns: this._options.filePatterns,
+            excludePatterns: this._options.excludePatterns
+        });
+        const filePattern = this._options.filePatterns?.[0] || this.getDefaultFilePattern();
+        const excludePattern = this._options.excludePatterns?.[0] || "**/node_modules/**,**/dist/**";
+        const excludePatterns = excludePattern.split(',').map(p => p.trim());
+        this.logDebug('\n=== 파일 패턴 설정 ===');
+        this.logDebug('파일 패턴:', filePattern);
+        this.logDebug('제외 패턴:', excludePatterns);
+        const targetFiles = files.filter(file => {
+            const relativePath = path.relative(workdir, path.join(workdir, file));
+            const isMatched = glob.sync(filePattern, {
+                cwd: workdir,
+                dot: false
+            }).some(match => match === relativePath);
+            const isExcluded = excludePatterns.some(excludePattern => glob.sync(excludePattern, {
+                cwd: workdir,
+                dot: false
+            }).some(match => match === relativePath));
+            this.logDebug(`\n파일 검사: ${file}`);
+            this.logDebug(`- 패턴 매칭: ${isMatched}`);
+            this.logDebug(`- 제외 여부: ${isExcluded}`);
+            return isMatched && !isExcluded;
+        });
+        this.logDebug('\n=== 최종 검사 대상 ===');
+        this.logDebug(`검사 대상 파일 수: ${targetFiles.length}`);
+        this.logDebug('검사 대상 파일 목록:', targetFiles);
+        for (const file of targetFiles) {
+            try {
+                const filePath = path.join(workdir, file);
+                this.logDebug(`파일 분석 시작: ${filePath}`);
+                const fileResults = await this.reviewFile(filePath);
+                results.push(...fileResults);
+            }
+            catch (error) {
+                core.warning(`파일 분석 중 오류 발생 (${file}): ${error}`);
+                if (this._options.debug && error instanceof Error) {
+                    this.logDebug(`스택 트레이스: ${error.stack}`);
+                }
+            }
+        }
+        this.logDebug(`총 ${results.length}개의 리뷰 결과가 생성되었습니다.`);
+        return results;
+    }
+}
+exports.BaseReviewer = BaseReviewer;
 
 
 /***/ }),
