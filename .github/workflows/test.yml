@@ -23,6 +23,7 @@ jobs:
           github_token: ${{ secrets.github_token }}
           workdir: ./testdata/
           debug: true
+          ai_reviewer_use_mock_api: true
           ai_reviewer_enabled: true
           ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
           ai_reviewer_language: ja
@@ -31,6 +32,36 @@ jobs:
           ai_reviewer_temperature: 0.7
           ai_reviewer_file_patterns: "**/*.{js,jsx,ts,tsx}"
           ai_reviewer_exclude_patterns: "**/node_modules/**,**/dist/**"
+          axe_reviewer_enabled: true
+          axe_reviewer_file_patterns: "**/*.{html,jsx,tsx}"
+          axe_reviewer_exclude_patterns: "**/node_modules/**,**/dist/**"
+          axe_reviewer_standard: "WCAG2AA"
+          fail_on_error: true
+          comment_mode: both
+
+  test-axe-only:
+    name: Axe 리뷰어 전용 테스트
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: ./
+        with:
+          github_token: ${{ secrets.github_token }}
+          workdir: ./testdata/
+          debug: true
+          ai_reviewer_use_mock_api: true
+          ai_reviewer_enabled: false
+          axe_reviewer_enabled: true
+          axe_reviewer_file_patterns: "**/*.{html,jsx,tsx}"
+          axe_reviewer_exclude_patterns: "**/node_modules/**,**/dist/**"
+          axe_reviewer_standard: "WCAG2AA"
           fail_on_error: true
           comment_mode: both
 
