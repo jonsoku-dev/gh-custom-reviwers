@@ -1,6 +1,40 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 3779:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.MockOpenAI = void 0;
+class MockOpenAI {
+    chat = {
+        completions: {
+            create: async ({ messages }) => {
+                return {
+                    choices: [
+                        {
+                            message: {
+                                content: `
+1. 코드 스타일: 일관된 들여쓰기와 포맷팅을 유지하세요.
+2. 변수명: 더 명확한 변수명을 사용하면 좋을 것 같습니다.
+3. 주석: 복잡한 로직에 대한 설명이 필요해 보입니다.
+4. 에러 처리: try-catch 블록을 추가하는 것이 좋겠습니다.
+5. 테스트: 단위 테스트 추가를 권장합니다.`.trim()
+                            }
+                        }
+                    ]
+                };
+            }
+        }
+    };
+}
+exports.MockOpenAI = MockOpenAI;
+
+
+/***/ }),
+
 /***/ 3860:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -38,6 +72,7 @@ const core = __importStar(__nccwpck_require__(7484));
 const fs_1 = __nccwpck_require__(9896);
 const fsSync = __importStar(__nccwpck_require__(9896));
 const path_1 = __importDefault(__nccwpck_require__(6928));
+const openai_2 = __nccwpck_require__(3779);
 class AIReviewer {
     openai;
     _options;
@@ -54,18 +89,36 @@ class AIReviewer {
     initializeOpenAI() {
         if (this._options.debug) {
             console.log('AI 리뷰어 OpenAI 초기화 시작');
-        }
-        if (!this._options.apiKey) {
-            const error = new Error('OpenAI API 키가 설정되지 않았습니다.');
-            core.error(error.message);
-            throw error;
+            console.log(`Mock API 사용 여부: ${this._options.useMockApi}`);
         }
         try {
-            this.openai = new openai_1.default({ apiKey: this._options.apiKey });
+            if (this._options.useMockApi) {
+                this.openai = new openai_2.MockOpenAI();
+                core.info('Mock OpenAI API가 활성화되었습니다.');
+                if (this._options.debug) {
+                    console.log('Mock OpenAI 클라이언트가 초기화되었습니다.');
+                    console.log('실제 API 호출 대신 Mock 응답이 사용됩니다.');
+                }
+            }
+            else {
+                if (!this._options.apiKey) {
+                    const error = new Error('OpenAI API 키가 설정되지 않았습니다.');
+                    core.error(error.message);
+                    throw error;
+                }
+                this.openai = new openai_1.default({ apiKey: this._options.apiKey });
+                core.info('실제 OpenAI API가 활성화되었습니다.');
+                if (this._options.debug) {
+                    console.log('실제 OpenAI 클라이언트가 초기화되었습니다.');
+                }
+            }
             if (this._options.debug) {
-                console.log('OpenAI 클라이언트가 성공적으로 초기화되었습니다.');
                 console.log('AI 리뷰어 초기화됨');
-                const debugConfig = { ...this._options, apiKey: '***' };
+                const debugConfig = {
+                    ...this._options,
+                    apiKey: '***',
+                    usingMockApi: this._options.useMockApi
+                };
                 console.log(`설정: ${JSON.stringify(debugConfig, null, 2)}`);
             }
         }
@@ -153,6 +206,7 @@ class AIReviewer {
         try {
             if (this._options.debug) {
                 console.log('OpenAI API 호출 시작...');
+                console.log(`API 타입: ${this._options.useMockApi ? 'Mock API' : '실제 OpenAI API'}`);
                 console.log(`사용 모델: ${this._options.model || 'gpt-4o'}`);
                 console.log(`사용 언어: ${this._options.language || 'ko'}`);
             }
