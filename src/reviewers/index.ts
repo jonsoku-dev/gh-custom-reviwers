@@ -23,10 +23,10 @@ export const createReviewer = (type: string, env?: NodeJS.ProcessEnv): Reviewer 
       return new AxeReviewer({
         debug: env?.DEBUG === 'true',
         enabled: env?.AXE_REVIEWER_ENABLED === 'true',
-        filePatterns: env?.AXE_REVIEWER_FILE_PATTERNS?.split(','),
-        excludePatterns: env?.AXE_REVIEWER_EXCLUDE_PATTERNS?.split(','),
+        filePatterns: [env?.AXE_REVIEWER_FILE_PATTERNS || "**/*.{html,jsx,tsx}"],
+        excludePatterns: [env?.AXE_REVIEWER_EXCLUDE_PATTERNS || "**/node_modules/**,**/dist/**"],
         workdir: env?.WORKSPACE_PATH || '.',
-        standard: env?.AXE_REVIEWER_STANDARD as 'WCAG2A' | 'WCAG2AA' | 'WCAG2AAA'
+        standard: (env?.AXE_REVIEWER_STANDARD || 'WCAG2AA') as 'WCAG2A' | 'WCAG2AA' | 'WCAG2AAA'
       });
     default:
       return null;

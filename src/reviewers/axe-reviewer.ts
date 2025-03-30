@@ -53,11 +53,16 @@ export default class AxeReviewer implements Reviewer {
     }
 
     // 파일 패턴과 제외 패턴 처리
-    const filePattern = this._options.filePatterns || "**/*.{html,jsx,tsx}";
+    const filePattern = Array.isArray(this._options.filePatterns)
+      ? this._options.filePatterns[0]
+      : typeof this._options.filePatterns === 'string'
+        ? this._options.filePatterns
+        : "**/*.{html,jsx,tsx}";
+
     const excludePatterns = Array.isArray(this._options.excludePatterns)
       ? this._options.excludePatterns
       : typeof this._options.excludePatterns === 'string'
-        ? (this._options.excludePatterns as string).split(',').map((p: string) => p.trim())
+        ? [this._options.excludePatterns]
         : ["**/node_modules/**", "**/dist/**"];
 
     if (this._options.debug) {
