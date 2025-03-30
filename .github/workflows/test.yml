@@ -18,18 +18,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Set environment variables
-        run: |
-          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "USE_MOCK_API=false" >> $GITHUB_ENV
-          else
-            echo "USE_MOCK_API=true" >> $GITHUB_ENV
-          fi
       - uses: ./
         with:
           github_token: ${{ secrets.github_token }}
           workdir: ./testdata/
           debug: true
+          ai_reviewer_use_mock_api: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
           ai_reviewer_enabled: true
           ai_reviewer_api_key: ${{ secrets.OPENAI_API_KEY }}
           ai_reviewer_language: ja
@@ -57,14 +51,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Set environment variables
-        run: |
-          echo "USE_MOCK_API=true" >> $GITHUB_ENV
       - uses: ./
         with:
           github_token: ${{ secrets.github_token }}
           workdir: ./testdata/
           debug: true
+          ai_reviewer_use_mock_api: true
           ai_reviewer_enabled: false
           axe_reviewer_enabled: true
           axe_reviewer_file_patterns: "**/*.{html,jsx,tsx}"

@@ -17,7 +17,7 @@ export const createReviewer = (type: string, env?: NodeJS.ProcessEnv): Reviewer 
         filePatterns: env?.AI_REVIEWER_FILE_PATTERNS?.split(','),
         excludePatterns: env?.AI_REVIEWER_EXCLUDE_PATTERNS?.split(','),
         workdir: env?.WORKSPACE_PATH || '.',
-        useMockApi: env?.USE_MOCK_API === 'true'
+        useMockApi: env?.AI_REVIEWER_USE_MOCK_API === 'true'
       });
     case 'axe':
       return new AxeReviewer({

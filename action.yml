@@ -26,6 +26,11 @@ inputs:
     required: false
     default: "true"
     
+  ai_reviewer_use_mock_api:
+    description: "OpenAI API 대신 Mock API 사용 여부"
+    required: false
+    default: "false"
+  
   ai_reviewer_api_key:
     description: "OpenAI API 키"
     required: false
@@ -110,6 +115,9 @@ runs:
           echo "DEBUG=true" >> $GITHUB_ENV
           set -x
         fi
+
+        # Mock API 설정
+        echo "AI_REVIEWER_USE_MOCK_API=${{ inputs.ai_reviewer_use_mock_api }}" >> $GITHUB_ENV
 
         # workdir이 기본값이 아닌 경우 파일 복사
         if [ "${{ inputs.workdir }}" != "." ]; then
