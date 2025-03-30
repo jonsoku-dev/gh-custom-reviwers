@@ -53,36 +53,22 @@ export default class AxeReviewer implements Reviewer {
     }
 
     // 파일 패턴 처리
-    let filePatterns: string[];
-    if (Array.isArray(this._options.filePatterns)) {
-      // 배열인 경우 각 패턴을 개별적으로 처리
-      filePatterns = this._options.filePatterns.map(pattern => {
-        // 중괄호 패턴이 분리되었다면 다시 합치기
-        if (pattern.includes('.{') || pattern.includes('}.')) {
-          const base = pattern.split('.{')[0];
-          const exts = pattern.split('.{')[1]?.split('}')[0]?.split(',');
-          if (exts) {
-            return `${base}.{${exts.join(',')}}`;
-          }
-        }
-        return pattern;
-      });
-    } else {
-      // 문자열인 경우 그대로 사용
-      filePatterns = [this._options.filePatterns || "**/*.{html,jsx,tsx}"];
-    }
+    const filePatterns = typeof this._options.filePatterns === 'string'
+      ? [this._options.filePatterns]
+      : Array.isArray(this._options.filePatterns)
+        ? this._options.filePatterns
+        : ["**/*.{html,jsx,tsx}"];
 
     // 제외 패턴 처리
-    const excludePatterns = Array.isArray(this._options.excludePatterns)
-      ? this._options.excludePatterns
-      : (this._options.excludePatterns || "**/node_modules/**,**/dist/**,**/build/**")
-          .split(',')
-          .map(p => p.trim());
+    const excludePatterns = typeof this._options.excludePatterns === 'string'
+      ? (this._options.excludePatterns as string).split(',').map((p: string) => p.trim())
+      : Array.isArray(this._options.excludePatterns)
+        ? this._options.excludePatterns
+        : ["**/node_modules/**", "**/dist/**"];
 
     if (this._options.debug) {
       console.log('=== 파일 패턴 처리 ===');
-      console.log(`입력된 파일 패턴:`, this._options.filePatterns);
-      console.log(`정규화된 파일 패턴:`, filePatterns);
+      console.log(`입력된 파일 패턴:`, filePatterns);
       console.log(`제외 패턴:`, excludePatterns);
     }
 
