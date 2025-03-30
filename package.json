@@ -26,8 +26,8 @@
     "vitest": "^3.0.9"
   },
   "scripts": {
-    "build": "tsc && npm run bundle",
-    "bundle": "find dist -type f -name '*.js' -not -path '*/bundled/*' | while read file; do mkdir -p dist/bundled/$(dirname \"${file#dist/}\") && ncc build \"$file\" -o \"dist/bundled/$(dirname \"${file#dist/}\")/$(basename \"$file\" .js)\" && cp -r \"dist/bundled/$(dirname \"${file#dist/}\")/$(basename \"$file\" .js)/index.js\" \"$file\" && rm -rf dist/bundled; done",
+    "build": "npm run bundle",
+    "bundle": "ncc build src/run-reviews.ts -o dist/run-reviews && ncc build src/setup-configs.ts -o dist/setup-configs",
     "lint": "eslint . --ext .ts",
     "test": "vitest run",
     "test:watch": "vitest",
