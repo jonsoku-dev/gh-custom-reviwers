@@ -23,8 +23,8 @@
     "sourceMap": false,
     "removeComments": true,
     "noEmitOnError": true,
-    "pretty": false,
+    "pretty": false
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "__tests__"]
+  "exclude": ["node_modules", "dist", "__tests__"]
 } 

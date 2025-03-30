@@ -1,3 +1,4 @@
+import { promises as fs } from 'fs';
 import * as fsSync from 'fs';
 import * as path from 'path';
 
@@ -15,19 +16,19 @@ interface ConfigError extends Error {
 
 function copyConfigFiles(toolName: string, configPath: string | undefined): void {
   console.log(`\n[${toolName}] 설정 파일 복사 시작`);
-
+  
   // GitHub Actions 환경에서의 configs 디렉토리 경로 설정
   const actionPath = process.env.GITHUB_ACTION_PATH || __dirname;
   let sourceDir = path.join(actionPath, 'configs', toolName);
   console.log(`[${toolName}] 액션 경로:`, actionPath);
   console.log(`[${toolName}] 소스 디렉토리 경로:`, sourceDir);
-
+  
   if (!fsSync.existsSync(sourceDir)) {
     console.error(`[${toolName}] 소스 디렉토리가 존재하지 않습니다:`, sourceDir);
     // 상위 디렉토리 탐색
     const parentSourceDir = path.join(actionPath, '..', 'configs', toolName);
     console.log(`[${toolName}] 상위 디렉토리 탐색:`, parentSourceDir);
-
+    
     if (fsSync.existsSync(parentSourceDir)) {
       console.log(`[${toolName}] 상위 디렉토리에서 configs 발견`);
       sourceDir = parentSourceDir;
@@ -35,15 +36,15 @@ function copyConfigFiles(toolName: string, configPath: string | undefined): void
       throw new Error(`소스 디렉토리를 찾을 수 없음: ${sourceDir} 또는 ${parentSourceDir}`);
     }
   }
-
+  
   try {
     const files = fsSync.readdirSync(sourceDir);
     console.log(`[${toolName}] 복사할 파일 목록:`, files);
-
+    
     files.forEach((file: string) => {
       const sourcePath = path.join(sourceDir, file);
       const targetPath = path.join(process.cwd(), file);
-
+      
       try {
         if (configPath && file.endsWith('.json')) {
           // 사용자 정의 설정 파일이 있는 경우
@@ -67,7 +68,7 @@ function copyConfigFiles(toolName: string, configPath: string | undefined): void
         throw err;
       }
     });
-
+    
     console.log(`[${toolName}] 모든 설정 파일 복사 완료`);
   } catch (error) {
     const err = error as ConfigError;
@@ -79,7 +80,7 @@ function copyConfigFiles(toolName: string, configPath: string | undefined): void
 function createConfig(inputs: ActionInputs): void {
   console.log('\n=== 설정 파일 생성 시작 ===');
   console.log('현재 작업 디렉토리:', process.cwd());
-
+  
   try {
     // AI 리뷰어 설정
     if (inputs.skip_ai_review !== 'true') {
