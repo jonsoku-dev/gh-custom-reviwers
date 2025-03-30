@@ -51,12 +51,36 @@ export default class AxeReviewer implements Reviewer {
       console.log(`검토할 파일 목록: ${JSON.stringify(files, null, 2)}`);
     }
 
-    const targetFiles = files.length > 0 ? files : glob.sync('**/*.html', {
-      cwd: workdir,
-      ignore: this._options.excludePatterns || ['node_modules/**', 'dist/**', 'build/**'],
-    });
+    // 파일 패턴이 문자열로 들어오는 경우 처리
+    const filePatterns = Array.isArray(this._options.filePatterns) 
+      ? this._options.filePatterns 
+      : (this._options.filePatterns || "**/*.{html,jsx,tsx}").split(',').map(p => p.trim());
+
+    const excludePatterns = Array.isArray(this._options.excludePatterns)
+      ? this._options.excludePatterns
+      : (this._options.excludePatterns || "**/node_modules/**,**/dist/**,**/build/**").split(',').map(p => p.trim());
 
     if (this._options.debug) {
+      console.log('파일 패턴 처리:');
+      console.log(`원본 패턴: ${this._options.filePatterns}`);
+      console.log(`처리된 패턴: ${JSON.stringify(filePatterns)}`);
+      console.log(`제외 패턴: ${JSON.stringify(excludePatterns)}`);
+    }
+
+    const targetFiles = files.length > 0 ? files : filePatterns.reduce((acc: string[], pattern: string) => {
+      const matches = glob.sync(pattern, {
+        cwd: workdir,
+        ignore: excludePatterns,
+        absolute: false,
+        nodir: true
+      });
+      return [...acc, ...matches];
+    }, []);
+
+    if (this._options.debug) {
+      console.log(`작업 디렉토리: ${workdir}`);
+      console.log(`사용된 파일 패턴: ${JSON.stringify(filePatterns)}`);
+      console.log(`사용된 제외 패턴: ${JSON.stringify(excludePatterns)}`);
       console.log(`필터링된 대상 파일: ${JSON.stringify(targetFiles, null, 2)}`);
     }
 
