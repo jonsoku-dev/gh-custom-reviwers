@@ -5,6 +5,7 @@ import * as fsSync from 'fs';
 import { Reviewer, ReviewResult, ReviewerOptions } from '../types/reviewer';
 import path from 'path';
 import { MockOpenAI } from '../mocks/openai';
+import glob from 'glob';
 
 export default class AIReviewer implements Reviewer {
   private openai!: OpenAI | MockOpenAI;
@@ -98,20 +99,60 @@ export default class AIReviewer implements Reviewer {
 
     if (this._options.debug) {
       console.log(`검토할 작업 디렉토리: ${workdir}`);
-      console.log(`검토할 파일 목록: ${JSON.stringify(files, null, 2)}`);
+      console.log(`입력된 전체 파일 목록: ${JSON.stringify(files, null, 2)}`);
+      console.log('리뷰어 옵션:', {
+        ...this._options,
+        apiKey: '***',
+        enabled: this._options.enabled,
+        filePatterns: this._options.filePatterns,
+        excludePatterns: this._options.excludePatterns,
+        useMockApi: this._options.useMockApi
+      });
     }
 
-    const targetFiles = files.length > 0 ? files : fsSync.readdirSync(workdir)
-      .filter(file => {
-        const isTargetFile = file.endsWith('.js') || file.endsWith('.ts') || file.endsWith('.tsx');
-        const matchesPattern = !this._options.filePatterns?.length || 
-          this._options.filePatterns.some(pattern => file.match(pattern));
-        const isExcluded = this._options.excludePatterns?.some(pattern => file.match(pattern));
-        return isTargetFile && matchesPattern && !isExcluded;
-      });
+    // 파일 패턴과 제외 패턴 처리
+    const filePattern = this._options.filePatterns?.[0] || "**/*.{js,jsx,ts,tsx}";
+    const excludePattern = this._options.excludePatterns?.[0] || "**/node_modules/**,**/dist/**";
+    const excludePatterns = excludePattern.split(',').map(p => p.trim());
 
     if (this._options.debug) {
-      console.log(`필터링된 대상 파일: ${JSON.stringify(targetFiles, null, 2)}`);
+      console.log('\n=== 파일 패턴 설정 ===');
+      console.log(`파일 패턴:`, filePattern);
+      console.log(`제외 패턴:`, excludePatterns);
+    }
+
+    // glob 패턴으로 파일 필터링
+    const targetFiles = files.filter(file => {
+      // glob.sync는 상대 경로를 기준으로 동작하므로, 파일 경로를 상대 경로로 처리
+      const relativePath = path.relative(workdir, path.join(workdir, file));
+      
+      // glob 패턴과 매칭 확인
+      const isMatched = glob.sync(filePattern, {
+        cwd: workdir,
+        dot: false
+      }).some(match => match === relativePath);
+
+      // 제외 패턴과 매칭 확인
+      const isExcluded = excludePatterns.some(excludePattern =>
+        glob.sync(excludePattern, {
+          cwd: workdir,
+          dot: false
+        }).some(match => match === relativePath)
+      );
+
+      if (this._options.debug) {
+        console.log(`\n파일 검사: ${file}`);
+        console.log(`- 패턴 매칭: ${isMatched}`);
+        console.log(`- 제외 여부: ${isExcluded}`);
+      }
+
+      return isMatched && !isExcluded;
+    });
+
+    if (this._options.debug) {
+      console.log('\n=== 최종 검사 대상 ===');
+      console.log(`검사 대상 파일 수: ${targetFiles.length}`);
+      console.log(`검사 대상 파일 목록:`, JSON.stringify(targetFiles, null, 2));
     }
 
     for (const file of targetFiles) {

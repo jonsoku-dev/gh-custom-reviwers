@@ -14,8 +14,8 @@ export const createReviewer = (type: string, env?: NodeJS.ProcessEnv): Reviewer 
         model: env?.AI_REVIEWER_MODEL,
         maxTokens: parseInt(env?.AI_REVIEWER_MAX_TOKENS || '1000'),
         temperature: parseFloat(env?.AI_REVIEWER_TEMPERATURE || '0.7'),
-        filePatterns: env?.AI_REVIEWER_FILE_PATTERNS?.split(','),
-        excludePatterns: env?.AI_REVIEWER_EXCLUDE_PATTERNS?.split(','),
+        filePatterns: [env?.AI_REVIEWER_FILE_PATTERNS || "**/*.{js,jsx,ts,tsx}"],
+        excludePatterns: [env?.AI_REVIEWER_EXCLUDE_PATTERNS || "**/node_modules/**,**/dist/**"],
         workdir: env?.WORKSPACE_PATH || '.',
         useMockApi: env?.AI_REVIEWER_USE_MOCK_API === 'true'
       });
