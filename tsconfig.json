@@ -23,8 +23,11 @@
     "sourceMap": false,
     "removeComments": true,
     "noEmitOnError": true,
-    "pretty": false,
+    "pretty": false
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/run-reviews.ts",
+    "src/setup-configs.ts"
+  ],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "__tests__"]
 } 
