@@ -352,21 +352,9 @@ export class ReviewerManager {
 
   private async getTargetFiles(reviewerName: string): Promise<string[]> {
     const workdir = this.options.workdir || '.';
-    const reviewer = this.reviewers.get(reviewerName);
     
-    if (!reviewer) {
-      return [];
-    }
-
     try {
-      const allFiles = await fs.readdir(workdir);
-      return allFiles.filter(file => {
-        const isSourceFile = file.endsWith('.js') || file.endsWith('.ts') || file.endsWith('.tsx');
-        const matchesPattern = !this.options.filePatterns?.length ||
-          this.options.filePatterns.some(pattern => file.match(pattern));
-        const isExcluded = this.options.excludePatterns?.some(pattern => file.match(pattern));
-        return isSourceFile && matchesPattern && !isExcluded;
-      });
+      return await fs.readdir(workdir);
     } catch (error) {
       core.error(`파일 목록 생성 중 오류 발생: ${error}`);
       return [];
