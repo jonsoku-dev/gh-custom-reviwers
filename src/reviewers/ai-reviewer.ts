@@ -1,26 +1,16 @@
-import OpenAI from 'openai';
 import * as core from '@actions/core';
 import { promises as fs } from 'fs';
-import * as fsSync from 'fs';
-import { Reviewer, ReviewResult, ReviewerOptions } from '../types/reviewer';
-import path from 'path';
+import OpenAI from 'openai';
 import { MockOpenAI } from '../mocks/openai';
-import * as glob from 'glob';
+import { ReviewResult } from '../types/reviewer';
+import { BaseReviewer } from './base-reviewer';
 
-export default class AIReviewer implements Reviewer {
+export default class AIReviewer extends BaseReviewer {
   private openai!: OpenAI | MockOpenAI;
-  private _options: ReviewerOptions;
-  private readonly name = 'AIReviewer';
+  protected readonly name = 'AIReviewer';
 
-  constructor(options: ReviewerOptions = {}) {
-    this._options = options;
-    
-    if (this._options.debug) {
-      console.log('AI 리뷰어 생성자 호출됨');
-      console.log('AI 리뷰어 초기 옵션:');
-      console.log(JSON.stringify({ ...this._options, apiKey: this._options.apiKey ? '***' : undefined }, null, 2));
-    }
-    
+  constructor(options = {}) {
+    super(options);
     this.initializeOpenAI();
   }
 
@@ -51,13 +41,13 @@ export default class AIReviewer implements Reviewer {
           console.log('실제 OpenAI 클라이언트가 초기화되었습니다.');
         }
       }
-      
+
       if (this._options.debug) {
         console.log('AI 리뷰어 초기화됨');
-        const debugConfig = { 
-          ...this._options, 
+        const debugConfig = {
+          ...this._options,
           apiKey: '***',
-          usingMockApi: this._options.useMockApi 
+          usingMockApi: this._options.useMockApi
         };
         console.log(`설정: ${JSON.stringify(debugConfig, null, 2)}`);
       }
@@ -65,24 +55,6 @@ export default class AIReviewer implements Reviewer {
       core.error('OpenAI 클라이언트 초기화 중 오류 발생');
       throw error;
     }
-  }
-
-  get options(): ReviewerOptions {
-    return this._options;
-  }
-
-  set options(newOptions: ReviewerOptions) {
-    this._options = newOptions;
-    
-    if (this._options.debug) {
-      console.log('AI 리뷰어 옵션 업데이트 시작');
-      console.log('AI 리뷰어 옵션이 업데이트되었습니다.');
-      const debugConfig = { ...this._options, apiKey: '***' };
-      console.log(`새 설정: ${JSON.stringify(debugConfig, null, 2)}`);
-      console.log('AI 리뷰어 옵션 업데이트 완료');
-    }
-    
-    this.initializeOpenAI();
   }
 
   async isEnabled(): Promise<boolean> {
@@ -93,107 +65,28 @@ export default class AIReviewer implements Reviewer {
     return enabled;
   }
 
-  async review(files: string[]): Promise<ReviewResult[]> {
-    const results: ReviewResult[] = [];
-    const workdir = this._options.workdir || '.';
+  protected async reviewFile(filePath: string): Promise<ReviewResult[]> {
+    const content = await fs.readFile(filePath, 'utf8');
+    const suggestions = await this.analyzeCode(content);
 
     if (this._options.debug) {
-      console.log(`검토할 작업 디렉토리: ${workdir}`);
-      console.log(`입력된 전체 파일 목록: ${JSON.stringify(files, null, 2)}`);
-      console.log('리뷰어 옵션:', {
-        ...this._options,
-        apiKey: '***',
-        enabled: this._options.enabled,
-        filePatterns: this._options.filePatterns,
-        excludePatterns: this._options.excludePatterns,
-        useMockApi: this._options.useMockApi
+      console.log(`파일 ${filePath}에 대한 제안사항:`);
+      suggestions.forEach((suggestion, index) => {
+        console.log(`  ${index + 1}. ${suggestion}`);
       });
     }
 
-    // 파일 패턴과 제외 패턴 처리
-    const filePattern = this._options.filePatterns?.[0] || "**/*.{js,jsx,ts,tsx}";
-    const excludePattern = this._options.excludePatterns?.[0] || "**/node_modules/**,**/dist/**";
-    const excludePatterns = excludePattern.split(',').map(p => p.trim());
+    return suggestions.map(suggestion => ({
+      file: filePath,
+      line: 1,
+      message: suggestion,
+      severity: 'info',
+      reviewer: this.name
+    }));
+  }
 
-    if (this._options.debug) {
-      console.log('\n=== 파일 패턴 설정 ===');
-      console.log(`파일 패턴:`, filePattern);
-      console.log(`제외 패턴:`, excludePatterns);
-    }
-
-    // glob 패턴으로 파일 필터링
-    const targetFiles = files.filter(file => {
-      // glob.sync는 상대 경로를 기준으로 동작하므로, 파일 경로를 상대 경로로 처리
-      const relativePath = path.relative(workdir, path.join(workdir, file));
-      
-      // glob 패턴과 매칭 확인
-      const isMatched = glob.sync(filePattern, {
-        cwd: workdir,
-        dot: false
-      }).some(match => match === relativePath);
-
-      // 제외 패턴과 매칭 확인
-      const isExcluded = excludePatterns.some(excludePattern =>
-        glob.sync(excludePattern, {
-          cwd: workdir,
-          dot: false
-        }).some(match => match === relativePath)
-      );
-
-      if (this._options.debug) {
-        console.log(`\n파일 검사: ${file}`);
-        console.log(`- 패턴 매칭: ${isMatched}`);
-        console.log(`- 제외 여부: ${isExcluded}`);
-      }
-
-      return isMatched && !isExcluded;
-    });
-
-    if (this._options.debug) {
-      console.log('\n=== 최종 검사 대상 ===');
-      console.log(`검사 대상 파일 수: ${targetFiles.length}`);
-      console.log(`검사 대상 파일 목록:`, JSON.stringify(targetFiles, null, 2));
-    }
-
-    for (const file of targetFiles) {
-      try {
-        const filePath = path.join(workdir, file);
-        if (this._options.debug) {
-          console.log(`파일 분석 시작: ${filePath}`);
-        }
-
-        const content = await fs.readFile(filePath, 'utf8');
-        const suggestions = await this.analyzeCode(content);
-        
-        if (this._options.debug) {
-          console.log(`파일 ${filePath}에 대한 제안사항:`);
-          suggestions.forEach((suggestion, index) => {
-            console.log(`  ${index + 1}. ${suggestion}`);
-          });
-        }
-
-        suggestions.forEach((suggestion, index) => {
-          results.push({
-            file: filePath,
-            line: 1,
-            message: suggestion,
-            severity: 'info',
-            reviewer: this.name
-          });
-        });
-      } catch (error) {
-        core.warning(`파일 분석 중 오류 발생 (${file}): ${error}`);
-        if (this._options.debug && error instanceof Error) {
-          console.log(`스택 트레이스: ${error.stack}`);
-        }
-      }
-    }
-
-    if (this._options.debug) {
-      console.log(`총 ${results.length}개의 리뷰 결과가 생성되었습니다.`);
-    }
-
-    return results;
+  protected getDefaultFilePattern(): string {
+    return "**/*.{js,jsx,ts,tsx}";
   }
 
   private async analyzeCode(code: string): Promise<string[]> {

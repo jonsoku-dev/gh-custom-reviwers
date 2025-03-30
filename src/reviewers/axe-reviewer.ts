@@ -1,38 +1,13 @@
-import { JSDOM, VirtualConsole, DOMWindow } from 'jsdom';
 import * as axeCore from 'axe-core';
-import { promises as fs } from 'fs';
 import * as fsSync from 'fs';
+import { promises as fs } from 'fs';
+import { JSDOM, VirtualConsole } from 'jsdom';
 import * as path from 'path';
-import * as core from '@actions/core';
-import * as glob from 'glob';
-import { Reviewer, ReviewResult, ReviewerOptions, AxeViolation } from '../types/reviewer';
+import { AxeViolation, ReviewResult } from '../types/reviewer';
+import { BaseReviewer } from './base-reviewer';
 
-export default class AxeReviewer implements Reviewer {
-  private _options: ReviewerOptions;
-  private readonly name = 'AxeReviewer';
-
-  constructor(options: ReviewerOptions = {}) {
-    this._options = options;
-    
-    if (this._options.debug) {
-      console.log('Axe 리뷰어 생성자 호출됨');
-      console.log('Axe 리뷰어 초기 옵션:');
-      console.log(JSON.stringify(this._options, null, 2));
-    }
-  }
-
-  get options(): ReviewerOptions {
-    return this._options;
-  }
-
-  set options(newOptions: ReviewerOptions) {
-    this._options = newOptions;
-    
-    if (this._options.debug) {
-      console.log('Axe 리뷰어 옵션 업데이트됨');
-      console.log(`새 설정: ${JSON.stringify(this._options, null, 2)}`);
-    }
-  }
+export default class AxeReviewer extends BaseReviewer {
+  protected readonly name = 'AxeReviewer';
 
   async isEnabled(): Promise<boolean> {
     const enabled = this._options.enabled !== false;
@@ -42,103 +17,36 @@ export default class AxeReviewer implements Reviewer {
     return enabled;
   }
 
-  async review(files: string[]): Promise<ReviewResult[]> {
+  protected async reviewFile(filePath: string): Promise<ReviewResult[]> {
     const results: ReviewResult[] = [];
-    const workdir = this._options.workdir || '.';
+    const html = await fs.readFile(filePath, 'utf8');
 
-    if (this._options.debug) {
-      console.log(`검토할 작업 디렉토리: ${workdir}`);
-      console.log(`입력된 전체 파일 목록: ${JSON.stringify(files, null, 2)}`);
-      console.log('리뷰어 옵션:', {
-        ...this._options,
-        enabled: this._options.enabled,
-        filePatterns: this._options.filePatterns,
-        excludePatterns: this._options.excludePatterns,
-        standard: this._options.standard
+    const virtualConsole = new VirtualConsole();
+    virtualConsole.on("error", () => { });
+    virtualConsole.on("warn", () => { });
+    virtualConsole.on("info", () => { });
+    virtualConsole.on("dir", () => { });
+
+    const dom = await this.createDOM(html, filePath, virtualConsole);
+    const axeConfig = await this.loadAxeConfig();
+    const violations = await this.runAxe(dom, axeConfig);
+
+    violations.forEach((violation: AxeViolation) => {
+      results.push({
+        file: filePath,
+        line: 1,
+        message: `${violation.help} - ${violation.nodes.map(n => n.html).join(', ')}`,
+        severity: 'error',
+        reviewer: this.name
       });
-    }
-
-    // 파일 패턴과 제외 패턴 처리
-    const filePattern = this._options.filePatterns?.[0] || "**/*.{html,jsx,tsx}";
-    const excludePattern = this._options.excludePatterns?.[0] || "**/node_modules/**,**/dist/**";
-    const excludePatterns = excludePattern.split(',').map(p => p.trim());
-
-    if (this._options.debug) {
-      console.log('\n=== 파일 패턴 설정 ===');
-      console.log(`파일 패턴:`, filePattern);
-      console.log(`제외 패턴:`, excludePatterns);
-    }
-
-    // glob 패턴으로 파일 필터링
-    const targetFiles = files.filter(file => {
-      // glob.sync는 상대 경로를 기준으로 동작하므로, 파일 경로를 상대 경로로 처리
-      const relativePath = path.relative(workdir, path.join(workdir, file));
-      
-      // glob 패턴과 매칭 확인
-      const isMatched = glob.sync(filePattern, {
-        cwd: workdir,
-        dot: false
-      }).some(match => match === relativePath);
-
-      // 제외 패턴과 매칭 확인
-      const isExcluded = excludePatterns.some(excludePattern =>
-        glob.sync(excludePattern, {
-          cwd: workdir,
-          dot: false
-        }).some(match => match === relativePath)
-      );
-
-      if (this._options.debug) {
-        console.log(`\n파일 검사: ${file}`);
-        console.log(`- 패턴 매칭: ${isMatched}`);
-        console.log(`- 제외 여부: ${isExcluded}`);
-      }
-
-      return isMatched && !isExcluded;
     });
 
-    if (this._options.debug) {
-      console.log('\n=== 최종 검사 대상 ===');
-      console.log(`검사 대상 파일 수: ${targetFiles.length}`);
-      console.log(`검사 대상 파일 목록:`, JSON.stringify(targetFiles, null, 2));
-    }
-
-    const axeConfig = await this.loadAxeConfig();
-
-    for (const file of targetFiles) {
-      try {
-        const filePath = path.join(workdir, file);
-        const html = await fs.readFile(filePath, 'utf8');
-        
-        const virtualConsole = new VirtualConsole();
-        virtualConsole.on("error", () => {});
-        virtualConsole.on("warn", () => {});
-        virtualConsole.on("info", () => {});
-        virtualConsole.on("dir", () => {});
-
-        const dom = await this.createDOM(html, filePath, virtualConsole);
-        const violations = await this.runAxe(dom, axeConfig);
-        
-        violations.forEach((violation: AxeViolation) => {
-          results.push({
-            file: filePath,
-            line: 1,
-            message: `${violation.help} - ${violation.nodes.map(n => n.html).join(', ')}`,
-            severity: 'error',
-            reviewer: this.name
-          });
-        });
-
-        dom.window.close();
-      } catch (error) {
-        core.warning(`파일 분석 중 오류 발생 (${file}): ${error}`);
-        if (this._options.debug && error instanceof Error) {
-          console.log(`스택 트레이스: ${error.stack}`);
-        }
-      }
-    }
-
+    dom.window.close();
     return results;
+  }
+
+  protected getDefaultFilePattern(): string {
+    return "**/*.{html,jsx,tsx}";
   }
 
   private async loadAxeConfig() {
@@ -203,7 +111,7 @@ export default class AxeReviewer implements Reviewer {
   private async runAxe(dom: JSDOM, config: any): Promise<AxeViolation[]> {
     const window = dom.window;
     (window as any).axe = axeCore;
-    
+
     const script = window.document.createElement('script');
     script.textContent = axeCore.source;
     window.document.head.appendChild(script);
