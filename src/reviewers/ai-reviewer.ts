@@ -26,13 +26,16 @@ export default class AIReviewer implements Reviewer {
   private initializeOpenAI() {
     if (this._options.debug) {
       console.log('AI 리뷰어 OpenAI 초기화 시작');
+      console.log(`Mock API 사용 여부: ${this._options.useMockApi}`);
     }
 
     try {
-      if (process.env.USE_MOCK_API === 'true') {
+      if (this._options.useMockApi) {
         this.openai = new MockOpenAI();
+        core.info('Mock OpenAI API가 활성화되었습니다.');
         if (this._options.debug) {
           console.log('Mock OpenAI 클라이언트가 초기화되었습니다.');
+          console.log('실제 API 호출 대신 Mock 응답이 사용됩니다.');
         }
       } else {
         if (!this._options.apiKey) {
@@ -42,6 +45,7 @@ export default class AIReviewer implements Reviewer {
         }
 
         this.openai = new OpenAI({ apiKey: this._options.apiKey });
+        core.info('실제 OpenAI API가 활성화되었습니다.');
         if (this._options.debug) {
           console.log('실제 OpenAI 클라이언트가 초기화되었습니다.');
         }
@@ -49,7 +53,11 @@ export default class AIReviewer implements Reviewer {
       
       if (this._options.debug) {
         console.log('AI 리뷰어 초기화됨');
-        const debugConfig = { ...this._options, apiKey: '***' };
+        const debugConfig = { 
+          ...this._options, 
+          apiKey: '***',
+          usingMockApi: this._options.useMockApi 
+        };
         console.log(`설정: ${JSON.stringify(debugConfig, null, 2)}`);
       }
     } catch (error) {
@@ -151,6 +159,7 @@ export default class AIReviewer implements Reviewer {
     try {
       if (this._options.debug) {
         console.log('OpenAI API 호출 시작...');
+        console.log(`API 타입: ${this._options.useMockApi ? 'Mock API' : '실제 OpenAI API'}`);
         console.log(`사용 모델: ${this._options.model || 'gpt-4o'}`);
         console.log(`사용 언어: ${this._options.language || 'ko'}`);
       }

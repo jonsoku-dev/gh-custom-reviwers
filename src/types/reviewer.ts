@@ -29,6 +29,7 @@ export interface ReviewerOptions {
   language?: 'ko' | 'en' | 'ja';
   // Axe Reviewer specific
   standard?: 'WCAG2A' | 'WCAG2AA' | 'WCAG2AAA';
+  useMockApi?: boolean;
 }
 
 export interface Reviewer {

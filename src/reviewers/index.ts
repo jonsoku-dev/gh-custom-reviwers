@@ -16,7 +16,8 @@ export const createReviewer = (type: string, env?: NodeJS.ProcessEnv): Reviewer 
         temperature: parseFloat(env?.AI_REVIEWER_TEMPERATURE || '0.7'),
         filePatterns: env?.AI_REVIEWER_FILE_PATTERNS?.split(','),
         excludePatterns: env?.AI_REVIEWER_EXCLUDE_PATTERNS?.split(','),
-        workdir: env?.WORKSPACE_PATH || '.'
+        workdir: env?.WORKSPACE_PATH || '.',
+        useMockApi: env?.USE_MOCK_API === 'true'
       });
     case 'axe':
       return new AxeReviewer({
